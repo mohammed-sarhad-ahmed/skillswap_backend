@@ -2,12 +2,30 @@ import express from "express";
 import dotenv from "dotenv";
 import authRouter from "./routers/auth.js";
 import { handleError } from "./handlers/error.js";
+import AppError from "./utils/app_error.js";
+import mongoose from "mongoose";
 
 dotenv.config();
+
+mongoose
+  .connect(
+    `mongodb://${process.env.DB_ADDRESS}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
+  )
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => {
+    console.error("Failed to connect to MongoDB", err);
+    process.exit(1);
+  });
+
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.SERVER_PORT || 3000;
+const HOST = process.env.SERVER_ADDRESS || "localhost";
 
 app.use("/auth", authRouter);
 
@@ -19,6 +37,6 @@ app.all("/{*everything}", (req, res, next) => {
 
 app.use(handleError);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
 });
