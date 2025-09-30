@@ -5,6 +5,7 @@ import AppError from "../utils/app_error.js";
 import generateVerificationCode from "../utils/email_verification";
 import VerifyEmail from "../utils/email_verification";
 import simpleHash from "../utils/simple_hashing.js";
+import { promisify } from "util";
 
 function signTokenAsync(payload, secret, options) {
   return new Promise((resolve, reject) => {
@@ -117,3 +118,63 @@ export async function resendVerificationCode(req, res, next) {
     next(new AppError("Something went wrong during sending the email", 500));
   }
 }
+
+export const logout = async (req, res, next) => {
+  const user = await UserModel.findById(req.user._id);
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+  user.tokenVersion += 1;
+  await user.save({ validateModifiedOnly: true });
+  response(res, "User logged out successfully");
+};
+
+export async function protectRoute(req, res, next) {
+  let { token } = req.cookies;
+  if (!token) {
+    return next(
+      new AppError("You are not logged in! Please log in to get access.", 401)
+    );
+  }
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+  const currentUser = await UserModel.findById(decoded.id);
+  if (!currentUser) {
+    return next(
+      new AppError(
+        "The user belonging to this token does no longer exist.",
+        404
+      )
+    );
+  }
+  if (currentUser.tokenVersion > decoded.tokenVersion) {
+    return next(
+      new AppError(
+        "The login token is no longer valid, Please login again.",
+        401
+      )
+    );
+  }
+
+  if (currentUser.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError("User recently changed password! Please log in again.", 401)
+    );
+  }
+
+  req.user = currentUser;
+  next();
+}
+
+//this is more readable than what eslint suggest
+// eslint-disable-next-line arrow-body-style
+export const restrictTo = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return next(
+        new AppError("You do not have permission to perform this action", 403)
+      );
+    }
+    next();
+  };
+};
