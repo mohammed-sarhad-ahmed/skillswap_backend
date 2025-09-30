@@ -24,10 +24,10 @@ const userSchema = new mongoose.Schema(
       },
     },
     isEmailVerified: { type: Boolean, default: false },
-    verificationCode: String,
-    verificationCodeExp: Date,
-    tokenVersion: { type: Number, default: 0 },
-    passwordChangedAt: Date,
+    verificationCode: { type: String, select: false },
+    verificationCodeExp: { type: Date, select: false },
+    tokenVersion: { type: Number, default: 1, select: false },
+    passwordChangedAt: { type: Date, select: false },
   },
   { timestamps: true }
 );
