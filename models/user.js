@@ -1,0 +1,73 @@
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+
+const userSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: {
+      type: String,
+      minlength: 8,
+      select: false,
+      required: [true, "Please provide a password."],
+    },
+    passwordConfirm: {
+      type: String,
+      minlength: 8,
+      select: false,
+      required: [true, "Please provide a password."],
+      validate: {
+        validator: function (passwordConfirm) {
+          return passwordConfirm === this.password;
+        },
+        message: "Password and password confirm must match.",
+      },
+    },
+    isEmailVerified: { type: Boolean, default: false },
+    verificationCode: String,
+    verificationCodeExp: Date,
+    tokenVersion: { type: Number, default: 0 },
+    passwordChangedAt: Date,
+  },
+  { timestamps: true }
+);
+
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  this.passwordConfirm = undefined;
+  next();
+});
+
+userSchema.methods.correctPassword = async function (
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return changedTimestamp > JWTTimestamp;
+  }
+  return false;
+};
+
+userSchema.set("toJSON", {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    delete ret.passwordConfirm;
+    delete ret.__v;
+    delete ret.tokenVersion;
+    delete ret.verificationCode;
+    delete ret.verificationCodeExp;
+    delete ret.passwordChangedAt;
+    return ret;
+  },
+});
+
+export const UserModel = mongoose.model("User", userSchema);

@@ -1,0 +1,88 @@
+<mjml>
+  <mj-head>
+    <mj-title>Verify Your Email</mj-title>
+    <mj-preview>Use the code below to verify your email address</mj-preview>
+  </mj-head>
+
+  <mj-body background-color="#f5f5f5">
+    <!-- Spacer -->
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text>&nbsp;</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main card -->
+    <mj-section background-color="#ffffff" padding="30px">
+      <mj-column>
+        <mj-image
+          src="https://www.space.krd/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fspace-logo.7a623065.jpg&w=3840&q=75"
+          alt="Logo"
+          width="100px"
+        />
+
+        <mj-text
+          font-size="20px"
+          color="#333333"
+          font-family="Arial, sans-serif"
+          align="center"
+          padding="10px 0"
+        >
+          Hello {{name}},
+        </mj-text>
+
+        <mj-text
+          font-size="16px"
+          color="#555555"
+          font-family="Arial, sans-serif"
+          align="center"
+          padding="10px 0"
+        >
+          Please use the 6-digit code below to verify your email address.<br />
+          <strong>This code is valid for 10 minutes.</strong>
+        </mj-text>
+
+        <mj-text
+          font-size="32px"
+          color="#007bff"
+          font-family="Courier, monospace"
+          align="center"
+          padding="20px 0"
+        >
+          {{code}}
+        </mj-text>
+
+        <mj-text
+          font-size="12px"
+          color="#999999"
+          font-family="Arial, sans-serif"
+          align="center"
+          padding="20px 0 0 0"
+        >
+          If you didn't request this, you can safely ignore this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Spacer -->
+    <mj-section padding="10px 0">
+      <mj-column>
+        <mj-text>&nbsp;</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section>
+      <mj-column>
+        <mj-text
+          font-size="12px"
+          color="#888888"
+          font-family="Arial, sans-serif"
+          align="center"
+        >
+          &copy; 2025 Space.krd. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
