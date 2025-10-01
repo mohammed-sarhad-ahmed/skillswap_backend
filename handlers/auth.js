@@ -25,7 +25,7 @@ async function sendEmailVerification(user) {
 
   const verificationEmail = new VerifyEmail(
     "email_verification",
-    user.name,
+    user.fullName,
     user.email,
     "Email Verification",
     verificationCode
@@ -132,7 +132,7 @@ export const logout = async (req, res, next) => {
 };
 
 export async function protectRoute(req, res, next) {
-  let { token } = req.cookies;
+  let { token } = req.body;
   if (!token) {
     return next(
       new AppError("You are not logged in! Please log in to get access.", 401)
