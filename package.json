@@ -4,7 +4,7 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon app.js"
+    "start": "NODE_ENV=dev nodemon app.js"
   },
   "author": "",
   "license": "ISC",
@@ -15,8 +15,10 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mjml": "^4.16.1",
     "mongoose": "^8.18.3",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.6",
     "sharp": "^0.34.4"
   }
 }

@@ -2,8 +2,8 @@ import { UserModel } from "../models/user.js";
 import response from "../utils/response.js";
 import jwt from "jsonwebtoken";
 import AppError from "../utils/app_error.js";
-import generateVerificationCode from "../utils/email_verification";
-import VerifyEmail from "../utils/email_verification";
+import generateVerificationCode from "../utils/email_verification.js";
+import VerifyEmail from "../utils/email_verification.js";
 import simpleHash from "../utils/simple_hashing.js";
 import { promisify } from "util";
 
@@ -31,10 +31,12 @@ async function sendEmailVerification(user) {
     verificationCode
   );
 
+  console.log(verificationEmail);
+
   await verificationEmail.sendEmail();
 }
 
-export const signup = async (req, res, next) => {
+export const signUp = async (req, res, next) => {
   const { fullName, email, password, passwordConfirm } = req.body;
 
   const newUser = await UserModel.create({

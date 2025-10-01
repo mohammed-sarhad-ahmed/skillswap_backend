@@ -50,7 +50,7 @@ function sendProdError(res, err) {
   }
 }
 
-const handleError = (err, req, res, next) => {
+export const handleError = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
   let error = Object.create(err);
@@ -67,5 +67,3 @@ const handleError = (err, req, res, next) => {
     sendProdError(res, error);
   }
 };
-
-export default handleError;
