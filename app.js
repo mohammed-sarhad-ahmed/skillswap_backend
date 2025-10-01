@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import authRouter from "./routers/auth.js";
-import { handleError } from "./handlers/error.js";
+import handleError from "./handlers/error.js";
 import AppError from "./utils/app_error.js";
 import mongoose from "mongoose";
 
