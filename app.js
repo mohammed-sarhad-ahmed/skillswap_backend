@@ -4,6 +4,7 @@ import authRouter from "./routers/auth.js";
 import handleError from "./handlers/error.js";
 import AppError from "./utils/app_error.js";
 import mongoose from "mongoose";
+import cors from "cors";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ mongoose
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const PORT = process.env.SERVER_PORT || 3000;
 const HOST = process.env.SERVER_ADDRESS || "localhost";
@@ -33,6 +35,7 @@ app.use(express.static("public"));
 
 app.all("/{*everything}", (req, res, next) => {
   next(new AppError("route not found", 404));
+  console.log("404 error");
 });
 
 app.use(handleError);
