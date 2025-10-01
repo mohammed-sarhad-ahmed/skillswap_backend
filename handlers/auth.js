@@ -2,7 +2,7 @@ import { UserModel } from "../models/user.js";
 import response from "../utils/response.js";
 import jwt from "jsonwebtoken";
 import AppError from "../utils/app_error.js";
-import generateVerificationCode from "../utils/email_verification.js";
+import generateVerificationCode from "../utils/generate_verification_code.js";
 import VerifyEmail from "../utils/email_verification.js";
 import simpleHash from "../utils/simple_hashing.js";
 import { promisify } from "util";
