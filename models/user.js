@@ -28,6 +28,8 @@ const userSchema = new mongoose.Schema(
     verificationCodeExp: { type: Date, select: false },
     tokenVersion: { type: Number, default: 1, select: false },
     passwordChangedAt: { type: Date, select: false },
+    passwordResetToken: { type: String, select: false },
+    passwordResetTokenExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );
@@ -66,6 +68,8 @@ userSchema.set("toJSON", {
     delete ret.verificationCode;
     delete ret.verificationCodeExp;
     delete ret.passwordChangedAt;
+    delete ret.passwordResetToken;
+    delete ret.passwordResetTokenExpires;
     return ret;
   },
 });

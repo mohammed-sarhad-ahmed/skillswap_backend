@@ -6,6 +6,8 @@ import generateVerificationCode from "../utils/generate_verification_code.js";
 import VerifyEmail from "../utils/email_verification.js";
 import simpleHash from "../utils/simple_hashing.js";
 import { promisify } from "util";
+import generateResetToken from "../utils/generate_reset_token.js";
+import ResetEmail from "../utils/reset_password.js";
 
 function signTokenAsync(payload, secret, options) {
   return new Promise((resolve, reject) => {
@@ -168,15 +170,83 @@ export async function protectRoute(req, res, next) {
   next();
 }
 
-//this is more readable than what eslint suggest
-// eslint-disable-next-line arrow-body-style
-export const restrictTo = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return next(
-        new AppError("You do not have permission to perform this action", 403)
-      );
-    }
-    next();
-  };
-};
+export async function forgotPassword(req, res, next) {
+  const { email } = req.body;
+  const normalizedEmail = email?.toLowerCase()?.trim();
+  const user = await UserModel.findOne({
+    email: normalizedEmail,
+  });
+  if (!user) {
+    const randomDelay = Math.floor(1823 + Math.random() * 1000);
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, randomDelay);
+    });
+
+    return response(
+      res,
+      "If your email exists in our database, you have received a link to reset your password"
+    );
+  }
+
+  const resetToken = generateResetToken();
+  const hashedResetToken = simpleHash(resetToken);
+  const TEN_MINUTES = 10 * 60 * 1000;
+  user.passwordResetToken = hashedResetToken;
+  user.passwordResetTokenExpires = new Date(Date.now() + TEN_MINUTES);
+  await user.save({ validateModifiedOnly: true });
+
+  const resetUrl = `${req.protocol}://localhost:5173/reset-password/${resetToken}`;
+  try {
+    const resetEmail = new ResetEmail(
+      "reset_password",
+      user.fullName,
+      user.email,
+      "Password Reset",
+      resetUrl
+    );
+    await resetEmail.sendEmail();
+
+    response(
+      res,
+      "If your email exists in our database, you have received a link to reset your password"
+    );
+  } catch (err) {
+    user.passwordResetTokenExpires = undefined;
+    user.passwordResetToken = undefined;
+    await user.save({ validateModifiedOnly: true });
+    console.error("Email send error:", err);
+    return next(
+      new AppError(
+        "Something went wrong during sending the email. Please try again later!",
+        500,
+        "server_error"
+      )
+    );
+  }
+}
+
+export async function resetPassword(req, res, next) {
+  console.log(req.params.token);
+  const user = await UserModel.findOne({
+    passwordResetToken: simpleHash(req.params.token),
+    passwordResetTokenExpires: { $gt: new Date() },
+  });
+  if (!user) {
+    return next(
+      new AppError(
+        "Token is either invalid or expired.",
+        400,
+        "invalid_token_error"
+      )
+    );
+  }
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetTokenExpires = undefined;
+  await user.save();
+  await res.status(200).json({
+    status: "success",
+  });
+}

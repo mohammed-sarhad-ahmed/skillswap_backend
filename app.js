@@ -5,6 +5,7 @@ import { handleError } from "./handlers/error.js";
 import AppError from "./utils/app_error.js";
 import mongoose from "mongoose";
 import cors from "cors";
+import userRouter from "./routers/user.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ const PORT = process.env.SERVER_PORT || 3000;
 const HOST = process.env.SERVER_ADDRESS || "localhost";
 
 app.use("/auth", authRouter);
+app.use("/user", userRouter);
 
 app.use(express.static("public"));
 
