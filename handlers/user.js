@@ -202,3 +202,8 @@ export async function getCredit(req, res, next) {
     next(err);
   }
 }
+
+export async function deleteMe(req, res, next) {
+  await UserModel.findByIdAndDelete(req.user._id);
+  response(res, "Account was delete successfully");
+}
