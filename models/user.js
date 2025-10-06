@@ -1,10 +1,15 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import { type } from "os";
 
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    avatar: {
+      type: String,
+      default: "default-avatar.avif",
+    },
     password: {
       type: String,
       minlength: 8,
@@ -30,6 +35,16 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: { type: Date, select: false },
     passwordResetToken: { type: String, select: false },
     passwordResetTokenExpires: { type: Date, select: false },
+    learningSkills: {
+      type: [String],
+    },
+    teachingSkills: {
+      type: [String],
+    },
+    credits: {
+      type: Number,
+      default: 3,
+    },
   },
   { timestamps: true }
 );

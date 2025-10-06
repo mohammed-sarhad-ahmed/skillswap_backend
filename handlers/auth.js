@@ -134,7 +134,7 @@ export const logout = async (req, res, next) => {
 };
 
 export async function protectRoute(req, res, next) {
-  let { token } = req.body;
+  let token = req.body?.token || req.headers.auth;
   if (!token) {
     return next(
       new AppError("You are not logged in! Please log in to get access.", 401)
