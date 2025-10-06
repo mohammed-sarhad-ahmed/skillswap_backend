@@ -147,3 +147,58 @@ export const updateProfileAndPicture = async (req, res, next) => {
     next(err);
   }
 };
+
+export async function increaseCredit(req, res, next) {
+  try {
+    const user = await UserModel.findByIdAndUpdate(
+      req.user._id,
+      { $inc: { credits: 1 } },
+      { new: true }
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    response(res, "The credit was successfully increased", { user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function decreaseTheCredit(req, res, next) {
+  try {
+    const user = await UserModel.findById(req.user._id);
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    if (user.credits <= 0) {
+      return next(new AppError("Credits cannot go below 0", 400));
+    }
+
+    user.credits -= 1;
+    await user.save();
+
+    response(res, "The credit was successfully decreased", { user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getCredit(req, res, next) {
+  try {
+    const user = await UserModel.findById(req.user._id);
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    response(res, "User credits fetched successfully", {
+      credits: user.credits,
+    });
+  } catch (err) {
+    next(err);
+  }
+}

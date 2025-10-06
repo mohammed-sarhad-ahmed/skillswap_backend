@@ -35,4 +35,10 @@ router
   .post(addLearningSkill)
   .delete(deleteLearningSkill);
 
+router.get("/credits", getCredit);
+
+router.post("/credits/increase", increaseCredit);
+
+router.post("/credits/decrease", decreaseTheCredit);
+
 export default router;
