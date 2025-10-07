@@ -15,8 +15,6 @@
     <!-- Main card -->
     <mj-section background-color="#ffffff" padding="30px">
       <mj-column>
-        <mj-image src="" alt="Logo" width="100px" />
-
         <mj-text
           font-size="20px"
           color="#333333"
@@ -76,7 +74,7 @@
           font-family="Arial, sans-serif"
           align="center"
         >
-          &copy; 2025 Space.krd. All rights reserved.
+          &copy; 2025 Skill Swap All rights reserved.
         </mj-text>
       </mj-column>
     </mj-section>
