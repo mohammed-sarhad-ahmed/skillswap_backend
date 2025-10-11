@@ -3,6 +3,7 @@ import response from "../utils/response.js";
 import AppError from "../utils/app_error.js";
 import path from "path";
 import fs from "fs";
+import APIFeatures from "../utils/api_features.js";
 
 export const getUserProfile = async (req, res, next) => {
   const userId = req.user._id;
@@ -262,3 +263,40 @@ export async function deleteMe(req, res, next) {
   await UserModel.findByIdAndDelete(req.user._id);
   response(res, "Account was delete successfully");
 }
+
+export const getPublicUsers = async (req, res, next) => {
+  try {
+    const { search = "", page = 1, limit = 8 } = req.query;
+
+    // Build search query
+    const query = {
+      $or: [
+        { fullName: { $regex: search, $options: "i" } },
+        { teachingSkills: { $regex: search, $options: "i" } },
+      ],
+    };
+
+    const skip = (page - 1) * limit;
+
+    // Count total matching documents
+    const totalCount = await UserModel.countDocuments(query);
+
+    if (totalCount === 0) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Fetch users with pagination
+    const users = await UserModel.find(query)
+      .select("fullName avatar teachingSkills credits")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort("-createdAt _id");
+
+    res.status(200).json({
+      users,
+      totalCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

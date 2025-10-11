@@ -11,6 +11,7 @@ import {
   increaseCredit,
   decreaseTheCredit,
   deleteMe,
+  getPublicUsers,
 } from "../handlers/user.js";
 import { protectRoute } from "../handlers/auth.js";
 import { uploadSingle, resizeImage } from "../handlers/upload.js";
@@ -18,6 +19,8 @@ import { uploadSingle, resizeImage } from "../handlers/upload.js";
 const router = express.Router();
 
 router.use(protectRoute);
+
+router.get("/", getPublicUsers);
 
 router.post("/me", getUserProfile);
 
