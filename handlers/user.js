@@ -266,37 +266,13 @@ export async function deleteMe(req, res, next) {
 
 export const getPublicUsers = async (req, res, next) => {
   try {
-    const { search = "", page = 1, limit = 8 } = req.query;
-
-    // Build search query
-    const query = {
-      $or: [
-        { fullName: { $regex: search, $options: "i" } },
-        { teachingSkills: { $regex: search, $options: "i" } },
-      ],
-    };
-
-    const skip = (page - 1) * limit;
-
-    // Count total matching documents
-    const totalCount = await UserModel.countDocuments(query);
-
-    if (totalCount === 0) {
-      return next(new AppError("User not found", 404));
-    }
-
-    // Fetch users with pagination
-    const users = await UserModel.find(query)
-      .select("fullName avatar teachingSkills credits")
-      .skip(skip)
-      .limit(parseInt(limit))
-      .sort("-createdAt _id");
-
-    res.status(200).json({
-      users,
-      totalCount,
-    });
+    const currentUserId = req.user._id;
+    const users = await UserModel.find(
+      currentUserId ? { _id: { $ne: currentUserId } } : {}
+    );
+    response(res, "Success", { users });
   } catch (err) {
-    next(err);
+    console.error(err);
+    res.status(500).json({ message: "Server Error" });
   }
 };

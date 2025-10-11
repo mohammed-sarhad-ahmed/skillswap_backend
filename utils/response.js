@@ -1,13 +1,13 @@
 export default function response(
   res,
-  message,
+  message = "Success",
   data = null,
   statusCode = 200,
-  status = 'Success'
+  status = "Success"
 ) {
   res.status(statusCode).json({
     message,
     status,
-    data
+    data,
   });
 }
