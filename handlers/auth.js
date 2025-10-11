@@ -48,7 +48,7 @@ export const signUp = async (req, res, next) => {
     passwordConfirm,
   });
 
-  sendEmailVerification(newUser);
+  await sendEmailVerification(newUser);
 
   const token = await signTokenAsync(
     { id: newUser._id },

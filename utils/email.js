@@ -14,8 +14,8 @@ class Email {
       port: 465,
       secure: true,
       auth: {
-        user: process.env.GMAIL_USER, // your Gmail address
-        pass: process.env.APP_PASSWORD, // your Gmail App Password
+        user: process.env.GMAIL_USER,
+        pass: process.env.APP_PASSWORD,
       },
     });
   }
