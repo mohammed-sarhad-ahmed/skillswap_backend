@@ -1,6 +1,51 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
-import { type } from "os";
+
+const availabilitySchema = new mongoose.Schema({
+  Monday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+  Tuesday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+  Wednesday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+  Thursday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+  Friday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+  Saturday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+  Sunday: {
+    start: { type: String, default: "09:00" },
+    end: { type: String, default: "17:00" },
+    off: { type: Boolean, default: false },
+  },
+});
+
+availabilitySchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.__v;
+    delete ret._id;
+    return ret;
+  },
+});
 
 const userSchema = new mongoose.Schema(
   {
@@ -28,6 +73,7 @@ const userSchema = new mongoose.Schema(
         message: "Password and password confirm must match.",
       },
     },
+    availability: { type: availabilitySchema, default: () => ({}) },
     isEmailVerified: { type: Boolean, default: false },
     verificationCode: { type: String, select: false },
     verificationCodeExp: { type: Date, select: false },

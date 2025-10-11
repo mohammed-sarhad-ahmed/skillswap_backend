@@ -1,6 +1,8 @@
 import { UserModel } from "../models/user.js";
 import response from "../utils/response.js";
 import AppError from "../utils/app_error.js";
+import path from "path";
+import fs from "fs";
 
 export const getUserProfile = async (req, res, next) => {
   const userId = req.user._id;
@@ -98,18 +100,70 @@ export const deleteTeachingSkill = async (req, res, next) => {
   response(res, "Teaching skill deleted successfully", user);
 };
 
-export const updateProfile = async (req, res, next) => {
-  const user = await UserModel.findById(req.user._id);
-  if (!user) return next(new AppError("User not found", 404));
+// Helper function to validate availability
+const validateAvailability = (availability) => {
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
 
-  const allowedFields = ["fullName", "email"];
-  for (const field of allowedFields) {
-    if (req.body[field]) user[field] = req.body[field];
+  for (const day of days) {
+    const dayData = availability[day];
+    if (!dayData) {
+      throw new AppError(`Availability for ${day} is missing`, 400);
+    }
+
+    // If the day is marked as off, skip start/end validation
+    if (dayData.off) continue;
+
+    if (!dayData.start || !dayData.end) {
+      throw new AppError(`Availability for ${day} is incomplete`, 400);
+    }
+
+    const start = dayData.start;
+    const end = dayData.end;
+
+    // Check HH:MM format
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(start)) {
+      throw new AppError(`Invalid start time for ${day}`, 400);
+    }
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(end)) {
+      throw new AppError(`Invalid end time for ${day}`, 400);
+    }
+
+    // Ensure start < end
+    if (start >= end) {
+      throw new AppError(`Start time must be before end time for ${day}`, 400);
+    }
   }
+};
 
-  await user.save();
+export const updateProfile = async (req, res, next) => {
+  try {
+    const user = await UserModel.findById(req.user._id);
+    if (!user) return next(new AppError("User not found", 404));
 
-  response(res, "Profile updated successfully", { user });
+    const allowedFields = ["fullName", "email", "availability"];
+    for (const field of allowedFields) {
+      if (req.body[field]) {
+        if (field === "availability") {
+          validateAvailability(req.body.availability);
+        }
+        user[field] = req.body[field];
+      }
+    }
+
+    await user.save();
+
+    response(res, "Profile updated successfully", { user });
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const updateProfileAndPicture = async (req, res, next) => {
@@ -117,11 +171,7 @@ export const updateProfileAndPicture = async (req, res, next) => {
     const user = await UserModel.findById(req.user.id);
     if (!user) return next(new AppError("User not found", 404));
 
-    if (
-      req.body.avatar &&
-      user.avatar &&
-      user.avatar !== "default-avatar.jpg"
-    ) {
+    if (req.file && user.avatar && user.avatar !== "default-avatar.jpg") {
       const oldPath = path.join("public", "user_avatar", user.avatar);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
@@ -129,14 +179,19 @@ export const updateProfileAndPicture = async (req, res, next) => {
     const updates = {};
     if (req.body.fullName) updates.fullName = req.body.fullName;
     if (req.body.email) updates.email = req.body.email;
+
+    if (req.body.availability) {
+      const availability = JSON.parse(req.body.availability);
+      validateAvailability(availability);
+      updates.availability = availability;
+    }
+
     if (req.file) updates.avatar = req.file.filename;
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       req.user.id,
       updates,
-      {
-        new: true,
-      }
+      { new: true }
     );
 
     res.status(200).json({
