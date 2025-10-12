@@ -48,8 +48,8 @@ export const getAppointments = async (req, res, next) => {
   if (student) filter.student = student;
 
   const appointments = await Appointment.find(filter)
-    .populate("teacher", "fullName email")
-    .populate("student", "fullName email")
+    .populate("teacher")
+    .populate("student")
     .sort({ date: 1, time: 1 });
 
   response(res, "Appointments fetched successfully", appointments);
@@ -64,8 +64,8 @@ export const getAppointment = async (req, res, next) => {
   }
 
   const appointment = await Appointment.findById(req.params.id)
-    .populate("teacher", "fullName email")
-    .populate("student", "fullName email");
+    .populate("teacher")
+    .populate("student");
 
   if (!appointment) {
     return next(new AppError("Appointment not found", 404));
