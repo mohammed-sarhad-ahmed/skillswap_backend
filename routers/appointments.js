@@ -6,6 +6,7 @@ import {
   getAppointment,
   updateAppointmentStatus,
   deleteAppointment,
+  updateAppointmentSchedule,
 } from "../handlers/appointments.js";
 
 import { protectRoute } from "../handlers/auth.js";
@@ -16,7 +17,9 @@ router.use(protectRoute);
 router.post("/", createAppointment);
 router.get("/", getAppointments);
 router.get("/:id", getAppointment);
-router.patch("/:id/status", updateAppointmentStatus);
+router.patch("/:id", updateAppointmentStatus);
+router.patch("/change-schedule/:id", updateAppointmentSchedule);
+
 router.delete("/:id", deleteAppointment);
 
 export default router;

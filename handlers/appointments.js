@@ -101,6 +101,50 @@ export const updateAppointmentStatus = async (req, res, next) => {
   response(res, "Appointment status updated successfully", appointment);
 };
 
+export const updateAppointmentSchedule = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next(
+        new AppError("You are not logged in! Please log in to get access.", 401)
+      );
+    }
+
+    const { status, date, time } = req.body;
+
+    // Validate status if provided
+    const validStatuses = ["pending", "confirmed", "completed", "canceled"];
+    if (status && !validStatuses.includes(status)) {
+      return next(new AppError("Invalid status", 400));
+    }
+
+    // Build the update object dynamically
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (date) updateData.date = date;
+    if (time) updateData.time = time;
+
+    console.log(updateData);
+
+    if (Object.keys(updateData).length === 0) {
+      return next(new AppError("No valid fields to update", 400));
+    }
+
+    const appointment = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!appointment) {
+      return next(new AppError("Appointment not found", 404));
+    }
+
+    response(res, "Appointment updated successfully", appointment);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const deleteAppointment = async (req, res, next) => {
   if (!req.user) {
     return next(

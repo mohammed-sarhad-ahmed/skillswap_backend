@@ -3,7 +3,6 @@ import response from "../utils/response.js";
 import AppError from "../utils/app_error.js";
 import path from "path";
 import fs from "fs";
-import APIFeatures from "../utils/api_features.js";
 
 export const getUserProfile = async (req, res, next) => {
   const userId = req.user._id;
