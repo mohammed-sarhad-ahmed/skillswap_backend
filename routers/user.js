@@ -12,6 +12,7 @@ import {
   decreaseTheCredit,
   deleteMe,
   getPublicUsers,
+  addCredit,
 } from "../handlers/user.js";
 import { protectRoute } from "../handlers/auth.js";
 import { uploadSingle, resizeImage } from "../handlers/upload.js";
@@ -47,6 +48,7 @@ router
 router.get("/credits", getCredit);
 
 router.post("/credits/increase", increaseCredit);
+router.post("/credits/add-credit", addCredit);
 
 router.post("/credits/decrease", decreaseTheCredit);
 

@@ -73,6 +73,11 @@ const userSchema = new mongoose.Schema(
         message: "Password and password confirm must match.",
       },
     },
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, "Balance cannot be less than 0"],
+    },
     availability: { type: availabilitySchema, default: () => ({}) },
     isEmailVerified: { type: Boolean, default: false },
     verificationCode: { type: String, select: false },

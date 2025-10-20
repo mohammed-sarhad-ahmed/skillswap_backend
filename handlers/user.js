@@ -3,6 +3,7 @@ import response from "../utils/response.js";
 import AppError from "../utils/app_error.js";
 import path from "path";
 import fs from "fs";
+import Appointment from "../models/appointments.js";
 
 export const getUserProfile = async (req, res, next) => {
   const userId = req.user._id;
@@ -148,9 +149,9 @@ export const updateProfile = async (req, res, next) => {
     const user = await UserModel.findById(req.user._id);
     if (!user) return next(new AppError("User not found", 404));
 
-    const allowedFields = ["fullName", "email", "availability"];
+    const allowedFields = ["fullName", "email", "availability", "balance"];
     for (const field of allowedFields) {
-      if (req.body[field]) {
+      if (req.body[field] !== undefined) {
         if (field === "availability") {
           validateAvailability(req.body.availability);
         }
@@ -179,6 +180,7 @@ export const updateProfileAndPicture = async (req, res, next) => {
     const updates = {};
     if (req.body.fullName) updates.fullName = req.body.fullName;
     if (req.body.email) updates.email = req.body.email;
+    if (req.body.balance !== undefined) updates.balance = req.body.balance;
 
     if (req.body.availability) {
       const availability = JSON.parse(req.body.availability);
@@ -221,6 +223,27 @@ export async function increaseCredit(req, res, next) {
   }
 }
 
+export async function addCredit(req, res, next) {
+  const { amount } = req.body;
+  console.log(amount);
+  if (!amount || amount <= 0) {
+    return next(new AppError("Invalid amount or user", 400));
+  }
+
+  const user = await UserModel.findById(req.user._id);
+  if (!user) return next(new AppError("User not found", 404));
+
+  if (user.balance < amount) {
+    return next(new AppError("Insufficient balance", 400));
+  }
+
+  user.balance -= amount;
+  user.credits += amount; // 1$ = 1 credit
+  await user.save();
+
+  return response(res, "The credit was successfully increased", { user });
+}
+
 export async function decreaseTheCredit(req, res, next) {
   try {
     const user = await UserModel.findById(req.user._id);
@@ -259,8 +282,25 @@ export async function getCredit(req, res, next) {
 }
 
 export async function deleteMe(req, res, next) {
-  await UserModel.findByIdAndDelete(req.user._id);
-  response(res, "Account was delete successfully");
+  try {
+    const userId = req.user._id;
+
+    // Delete all appointments where the user is teacher or student
+    await Appointment.deleteMany({
+      $or: [{ teacher: userId }, { student: userId }],
+    });
+
+    // Delete the user
+    await UserModel.findByIdAndDelete(userId);
+
+    response(
+      res,
+      "Account and all associated appointments were deleted successfully"
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server Error" });
+  }
 }
 
 export const getPublicUsers = async (req, res, next) => {
