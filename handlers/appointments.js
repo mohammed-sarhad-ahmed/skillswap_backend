@@ -14,8 +14,15 @@ export const createAppointment = async (req, res, next) => {
   const { teacher, date, time } = req.body;
   const student = req.user._id; // logged-in user is the student
 
-  // Prevent double booking
-  const existing = await Appointment.findOne({ teacher, date, time });
+  const existing = await Appointment.findOne({
+    teacher,
+    date,
+    time,
+    status: { $ne: "canceled" }, // only consider appointments that are NOT canceled
+  });
+
+  console.log(existing);
+
   if (existing) {
     return next(new AppError("This time slot is already booked.", 400));
   }
@@ -109,12 +116,26 @@ export const updateAppointmentSchedule = async (req, res, next) => {
       );
     }
 
-    const { status, date, time } = req.body;
+    const { status, date, time, teacher } = req.body;
 
     // Validate status if provided
     const validStatuses = ["pending", "confirmed", "completed", "canceled"];
     if (status && !validStatuses.includes(status)) {
       return next(new AppError("Invalid status", 400));
+    }
+
+    // Prevent double booking
+    const existing = await Appointment.findOne({
+      teacher,
+      date,
+      time,
+      status: { $ne: "canceled" }, // only consider appointments that are NOT canceled
+    });
+
+    console.log(existing);
+
+    if (existing) {
+      return next(new AppError("This time slot is already booked.", 400));
     }
 
     // Build the update object dynamically
