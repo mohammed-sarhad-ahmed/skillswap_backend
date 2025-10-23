@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import SkillSchema from "./skills.js";
 
 const availabilitySchema = new mongoose.Schema({
   Monday: {
@@ -78,6 +79,8 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Balance cannot be less than 0"],
     },
+    teachingSkills: [{ type: mongoose.Schema.ObjectId, ref: "Skill" }],
+    learningSkills: [{ type: mongoose.Schema.ObjectId, ref: "Skill" }],
     availability: { type: availabilitySchema, default: () => ({}) },
     isEmailVerified: { type: Boolean, default: false },
     verificationCode: { type: String, select: false },
@@ -86,12 +89,6 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: { type: Date, select: false },
     passwordResetToken: { type: String, select: false },
     passwordResetTokenExpires: { type: Date, select: false },
-    learningSkills: {
-      type: [String],
-    },
-    teachingSkills: {
-      type: [String],
-    },
     credits: {
       type: Number,
       default: 3,
