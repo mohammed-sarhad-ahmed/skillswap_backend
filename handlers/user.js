@@ -23,6 +23,16 @@ export const getUserProfile = async (req, res, next) => {
   }
 };
 
+export const getTeacher = async (req, res, next) => {
+  const user = await UserModel.findById(req.params.id);
+
+  if (!user) return next(new AppError("User not found", 404));
+
+  await user.populate("learningSkills teachingSkills");
+
+  response(res, "User profile fetched successfully", { user });
+};
+
 // Add learning skill
 export const addLearningSkill = async (req, res, next) => {
   try {

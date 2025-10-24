@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import {
   addLearningSkill,
   addTeachingSkill,
@@ -13,6 +13,7 @@ import {
   deleteMe,
   getPublicUsers,
   addCredit,
+  getTeacher,
 } from "../handlers/user.js";
 import { protectRoute } from "../handlers/auth.js";
 import { uploadSingle, resizeImage } from "../handlers/upload.js";
@@ -22,6 +23,8 @@ const router = express.Router();
 router.use(protectRoute);
 
 router.get("/", getPublicUsers);
+
+router.get("/teacher/:id", getTeacher);
 
 router.post("/me", getUserProfile);
 
