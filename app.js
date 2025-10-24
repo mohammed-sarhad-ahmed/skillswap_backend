@@ -1,12 +1,16 @@
 import express from "express";
 import dotenv from "dotenv";
-import authRouter from "./routers/auth.js";
-import { handleError } from "./handlers/error.js";
-import AppError from "./utils/app_error.js";
 import mongoose from "mongoose";
 import cors from "cors";
+import http from "http";
+
+import authRouter from "./routers/auth.js";
 import userRouter from "./routers/user.js";
 import appointmentsRouter from "./routers/appointments.js";
+import { handleError } from "./handlers/error.js";
+import AppError from "./utils/app_error.js";
+import { initSocket } from "./handlers/socket.js"; // import socket module
+import messageRouter from "./routers/messages.js";
 
 dotenv.config();
 
@@ -28,11 +32,9 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const PORT = process.env.SERVER_PORT || 3000;
-const HOST = process.env.SERVER_ADDRESS || "localhost";
-
 app.use("/auth", authRouter);
 app.use("/user", userRouter);
+app.use("/messages", messageRouter);
 app.use("/appointments", appointmentsRouter);
 
 app.use(express.static("public"));
@@ -44,6 +46,14 @@ app.all("/{*everything}", (req, res, next) => {
 
 app.use(handleError);
 
-app.listen(PORT, HOST, () => {
+// create HTTP server and attach Socket.IO
+const PORT = process.env.SERVER_PORT || 3000;
+const HOST = process.env.SERVER_ADDRESS || "localhost";
+const server = http.createServer(app);
+
+// initialize socket
+initSocket(server);
+
+server.listen(PORT, HOST, () => {
   console.log(`Server is running on http://${HOST}:${PORT}`);
 });

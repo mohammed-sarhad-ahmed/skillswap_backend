@@ -20,6 +20,7 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.6",
     "resend": "^6.1.2",
-    "sharp": "^0.34.4"
+    "sharp": "^0.34.4",
+    "socket.io": "^4.8.1"
   }
 }
