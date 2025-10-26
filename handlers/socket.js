@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import Message from "../models/messages.js";
 
 let io;
+const onlineUsers = new Map(); // track online users
 
 export const initSocket = (server) => {
   io = new Server(server, {
@@ -11,32 +12,47 @@ export const initSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    // Join a chat room for real-time messages
+    // register user when they login/connect
+    socket.on("register_user", (userId) => {
+      onlineUsers.set(userId, socket.id);
+      console.log(`User registered: ${userId}`);
+    });
+
+    // join a specific chat room
     socket.on("join_chat", ({ userId, otherUserId }) => {
       const roomId = [userId, otherUserId].sort().join("_");
       socket.join(roomId);
       console.log(`Socket ${socket.id} joined room ${roomId}`);
     });
 
-    // Handle sending messages
+    // handle sending messages
     socket.on("send_message", async (data) => {
       try {
         const roomId = [data.senderId, data.receiverId].sort().join("_");
-        socket.join(roomId); // ensure socket is in the room
+        socket.join(roomId); // make sure socket in the room
 
-        // Save message in database
+        // save message in DB
         const msgDoc = new Message({ ...data, roomId });
         await msgDoc.save();
 
-        // Emit the saved message to everyone in the room
+        // emit to chat room (for active chat)
         io.to(roomId).emit("receive_message", msgDoc);
+
+        // ✅ send directly to receiver if online (for sidebar)
+        const receiverSocket = onlineUsers.get(data.receiverId);
+        if (receiverSocket && receiverSocket !== socket.id) {
+          io.to(receiverSocket).emit("receive_message_global", msgDoc);
+        }
       } catch (err) {
         console.error("Failed to save/send message:", err);
       }
     });
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+      for (const [userId, id] of onlineUsers.entries()) {
+        if (id === socket.id) onlineUsers.delete(userId);
+      }
+      console.log(`User disconnected: ${socket.id}`);
     });
   });
 

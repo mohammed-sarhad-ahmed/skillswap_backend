@@ -107,3 +107,31 @@ export const getChatUsers = async (req, res, next) => {
     next(err);
   }
 };
+
+export async function markMessagesRead(req, res, next) {
+  try {
+    const currentUserId = req.user._id; // from auth middleware
+    const otherUserId = req.params.userId;
+
+    if (!otherUserId) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    const roomId = [currentUserId, otherUserId].sort().join("_");
+
+    const result = await Message.updateMany(
+      { roomId, receiverId: currentUserId, read: false },
+      { $set: { read: true } }
+    );
+
+    return response(
+      res,
+      `${result.modifiedCount} message(s) marked as read`,
+      { roomId },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    return next(new AppError(err.message || "Server error", 500));
+  }
+}
