@@ -93,6 +93,9 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 3,
     },
+    connections: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    sentRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    receivedRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true }
 );
