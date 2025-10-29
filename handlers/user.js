@@ -6,7 +6,6 @@ import fs from "fs";
 import Appointment from "../models/appointments.js";
 import SkillModel from "../models/skills.js";
 
-// Get user profile
 export const getUserProfile = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -33,7 +32,6 @@ export const getTeacher = async (req, res, next) => {
   response(res, "User profile fetched successfully", { user });
 };
 
-// Add learning skill
 export const addLearningSkill = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -59,7 +57,6 @@ export const addLearningSkill = async (req, res, next) => {
   }
 };
 
-// Add teaching skill
 export const addTeachingSkill = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -89,7 +86,6 @@ export const addTeachingSkill = async (req, res, next) => {
   }
 };
 
-// Delete learning skill
 export const deleteLearningSkill = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -116,7 +112,6 @@ export const deleteLearningSkill = async (req, res, next) => {
   }
 };
 
-// Delete teaching skill
 export const deleteTeachingSkill = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -143,7 +138,6 @@ export const deleteTeachingSkill = async (req, res, next) => {
   }
 };
 
-// Validate availability helper
 const validateAvailability = (availability) => {
   const days = [
     "Monday",
@@ -197,7 +191,6 @@ export const updateProfile = async (req, res, next) => {
   }
 };
 
-// Update profile & picture
 export const updateProfileAndPicture = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id);

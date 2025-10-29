@@ -12,20 +12,17 @@ export const initSocket = (server) => {
   });
 
   io.on("connection", (socket) => {
-    // --- Register user ---
     socket.on("register_user", (userId) => {
       if (userId) {
         onlineUsers.set(userId, socket.id);
       }
     });
 
-    // --- Join chat ---
     socket.on("join_chat", ({ userId, otherUserId }) => {
       const roomId = [userId, otherUserId].sort().join("_");
       socket.join(roomId);
     });
 
-    // --- Send message ---
     socket.on("send_message", async (data) => {
       try {
         const { senderId, receiverId, content } = data;
@@ -54,7 +51,6 @@ export const initSocket = (server) => {
       }
     });
 
-    // --- Send connection request ---
     socket.on("send_connection_request", async ({ from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
@@ -87,7 +83,6 @@ export const initSocket = (server) => {
       }
     });
 
-    // --- Accept connection request ---
     socket.on("accept_connection_request", async ({ notifId, from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
@@ -96,11 +91,9 @@ export const initSocket = (server) => {
           return;
         }
 
-        // Update user connections
         if (!fromUser.connections.includes(to)) fromUser.connections.push(to);
         if (!toUser.connections.includes(from)) toUser.connections.push(from);
 
-        // Remove pending requests
         fromUser.sentRequests = fromUser.sentRequests.filter((id) => id != to);
         toUser.receivedRequests = toUser.receivedRequests.filter(
           (id) => id != from
@@ -109,15 +102,12 @@ export const initSocket = (server) => {
         await fromUser.save();
         await toUser.save();
 
-        // Mark the original notification as accepted
-
         const noti = await Notification.findByIdAndUpdate(notifId, {
           read: true,
           status: "accepted",
         });
         console.log(noti);
 
-        // Notify the sender about acceptance
         const notif = new Notification({
           user: from,
           type: "connection_request",
@@ -128,7 +118,6 @@ export const initSocket = (server) => {
         });
         await notif.save();
 
-        // Emit updates to both users
         io.to(onlineUsers.get(from))?.emit("connection_update", {
           from,
           to,
@@ -142,7 +131,6 @@ export const initSocket = (server) => {
           notifId,
         });
 
-        // Emit new notification to sender
         if (onlineUsers.get(from))
           io.to(onlineUsers.get(from)).emit("notification", notif);
       } catch (err) {
@@ -150,14 +138,12 @@ export const initSocket = (server) => {
       }
     });
 
-    // --- Reject connection request ---
     socket.on("reject_connection_request", async ({ notifId, from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
         const toUser = await UserModel.findById(to);
         if (!fromUser || !toUser) return;
 
-        // Remove pending requests
         fromUser.sentRequests = fromUser.sentRequests.filter((id) => id != to);
         toUser.receivedRequests = toUser.receivedRequests.filter(
           (id) => id != from
@@ -166,13 +152,11 @@ export const initSocket = (server) => {
         await fromUser.save();
         await toUser.save();
 
-        // Mark the original notification as rejected
         const noti = await Notification.findByIdAndUpdate(notifId, {
           read: true,
           status: "rejected",
         });
 
-        // Notify the sender about rejection
         const notif = new Notification({
           user: from,
           type: "connection_request",
@@ -196,7 +180,6 @@ export const initSocket = (server) => {
       }
     });
 
-    // --- Cancel / Unconnect ---
     socket.on("cancel_connection_request", async ({ from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
@@ -228,7 +211,6 @@ export const initSocket = (server) => {
       }
     });
 
-    // --- Disconnect ---
     socket.on("disconnect", () => {
       for (const [userId, socketId] of onlineUsers.entries()) {
         if (socketId === socket.id) {
