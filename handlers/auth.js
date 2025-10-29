@@ -33,8 +33,6 @@ async function sendEmailVerification(user) {
     verificationCode
   );
 
-  console.log(verificationEmail);
-
   await verificationEmail.sendEmail();
 }
 
@@ -48,7 +46,7 @@ export const signUp = async (req, res, next) => {
     passwordConfirm,
   });
 
-  await sendEmailVerification(newUser);
+  sendEmailVerification(newUser);
 
   const token = await signTokenAsync(
     { id: newUser._id },
@@ -69,8 +67,6 @@ export const login = async (req, res, next) => {
   }
 
   const user = await UserModel.findOne({ email }).select("+password");
-
-  console.log(user);
 
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError("Incorrect email or password", 401));
@@ -229,7 +225,6 @@ export async function forgotPassword(req, res, next) {
 }
 
 export async function resetPassword(req, res, next) {
-  console.log(req.params.token);
   const user = await UserModel.findOne({
     passwordResetToken: simpleHash(req.params.token),
     passwordResetTokenExpires: { $gt: new Date() },

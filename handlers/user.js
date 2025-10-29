@@ -328,3 +328,33 @@ export const getPublicUsers = async (req, res, next) => {
     next(err);
   }
 };
+
+export async function sendConnectionRequest(req, res, next) {
+  try {
+    const fromId = req.user._id;
+    const { toId } = req.body;
+
+    if (!toId) return next(new AppError("Missing target user ID", 400));
+    if (fromId.toString() === toId)
+      return next(new AppError("You cannot connect with yourself", 400));
+
+    const fromUser = await UserModel.findById(fromId);
+    const toUser = await UserModel.findById(toId);
+
+    if (!toUser) return next(new AppError("User not found", 404));
+    if (fromUser.connections.includes(toId))
+      return next(new AppError("You are already connected", 400));
+    if (fromUser.sentRequests.includes(toId))
+      return next(new AppError("Request already sent", 400));
+
+    fromUser.sentRequests.push(toId);
+    toUser.receivedRequests.push(fromId);
+
+    await fromUser.save();
+    await toUser.save();
+
+    response(res, "Connection request sent", { fromUser, toUser });
+  } catch (err) {
+    next(err);
+  }
+}

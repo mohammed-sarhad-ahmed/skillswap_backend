@@ -11,6 +11,7 @@ import { handleError } from "./handlers/error.js";
 import AppError from "./utils/app_error.js";
 import { initSocket } from "./handlers/socket.js"; // import socket module
 import messageRouter from "./routers/messages.js";
+import notificationRouter from "./routers/notification.js";
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use("/auth", authRouter);
 app.use("/user", userRouter);
 app.use("/messages", messageRouter);
 app.use("/appointments", appointmentsRouter);
+app.use("/notifications", notificationRouter);
 
 app.use(express.static("public"));
 
