@@ -13,21 +13,20 @@ export const initSocket = (server) => {
 
   io.on("connection", (socket) => {
     socket.on("register_user", (userId) => {
-      if (userId) {
-        onlineUsers.set(userId, socket.id);
-      }
+      if (userId) onlineUsers.set(userId, socket.id);
     });
 
+    // ✅ Join chat
     socket.on("join_chat", ({ userId, otherUserId }) => {
       const roomId = [userId, otherUserId].sort().join("_");
       socket.join(roomId);
     });
 
+    // ✅ Send message
     socket.on("send_message", async (data) => {
       try {
         const { senderId, receiverId, content } = data;
         const roomId = [senderId, receiverId].sort().join("_");
-
         const msgDoc = new Message({ ...data, roomId });
         await msgDoc.save();
 
@@ -51,11 +50,19 @@ export const initSocket = (server) => {
       }
     });
 
+    // ✅ Send connection request
     socket.on("send_connection_request", async ({ from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
         const toUser = await UserModel.findById(to);
         if (!fromUser || !toUser) return;
+
+        // Remove old pending notifs from same sender before sending new
+        await Notification.deleteMany({
+          user: to,
+          from,
+          type: "connection_request",
+        });
 
         if (!fromUser.sentRequests.includes(to)) fromUser.sentRequests.push(to);
         if (!toUser.receivedRequests.includes(from))
@@ -70,26 +77,29 @@ export const initSocket = (server) => {
           content: `${
             fromUser.fullName || "Someone"
           } sent you a connection request.`,
+          read: false,
         });
         await notif.save();
 
         const toSocket = onlineUsers.get(to);
         if (toSocket) {
           io.to(toSocket).emit("connection_request", { from, to });
-          io.to(toSocket).emit("notification", notif);
+          io.to(toSocket).emit("notification", {
+            ...notif.toObject(),
+            isNew: true, // 🔹 mark this as new
+          });
         }
       } catch (err) {
         console.error("❌ send_connection_request error:", err);
       }
     });
 
+    // ✅ Accept connection
     socket.on("accept_connection_request", async ({ notifId, from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
         const toUser = await UserModel.findById(to);
-        if (!fromUser || !toUser) {
-          return;
-        }
+        if (!fromUser || !toUser) return;
 
         if (!fromUser.connections.includes(to)) fromUser.connections.push(to);
         if (!toUser.connections.includes(from)) toUser.connections.push(from);
@@ -102,11 +112,13 @@ export const initSocket = (server) => {
         await fromUser.save();
         await toUser.save();
 
-        const noti = await Notification.findByIdAndUpdate(notifId, {
-          read: true,
-          status: "accepted",
+        // Remove old notifs between these users
+        await Notification.deleteMany({
+          $or: [
+            { user: from, from: to },
+            { user: to, from },
+          ],
         });
-        console.log(noti);
 
         const notif = new Notification({
           user: from,
@@ -122,13 +134,11 @@ export const initSocket = (server) => {
           from,
           to,
           status: "accepted",
-          notifId,
         });
         io.to(onlineUsers.get(to))?.emit("connection_update", {
           from,
           to,
           status: "accepted",
-          notifId,
         });
 
         if (onlineUsers.get(from))
@@ -138,6 +148,7 @@ export const initSocket = (server) => {
       }
     });
 
+    // ✅ Reject connection
     socket.on("reject_connection_request", async ({ notifId, from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
@@ -152,9 +163,12 @@ export const initSocket = (server) => {
         await fromUser.save();
         await toUser.save();
 
-        const noti = await Notification.findByIdAndUpdate(notifId, {
-          read: true,
-          status: "rejected",
+        // remove old notifications between them
+        await Notification.deleteMany({
+          $or: [
+            { user: from, from: to },
+            { user: to, from },
+          ],
         });
 
         const notif = new Notification({
@@ -171,7 +185,6 @@ export const initSocket = (server) => {
           from,
           to,
           status: "rejected",
-          notifId,
         });
         if (onlineUsers.get(from))
           io.to(onlineUsers.get(from)).emit("notification", notif);
@@ -180,6 +193,7 @@ export const initSocket = (server) => {
       }
     });
 
+    // ✅ Disconnect/unconnect — remove all old notifs
     socket.on("cancel_connection_request", async ({ from, to }) => {
       try {
         const fromUser = await UserModel.findById(from);
@@ -195,6 +209,13 @@ export const initSocket = (server) => {
 
         await fromUser.save();
         await toUser.save();
+
+        await Notification.deleteMany({
+          $or: [
+            { user: from, from: to },
+            { user: to, from },
+          ],
+        });
 
         io.to(onlineUsers.get(from))?.emit("connection_update", {
           from,
@@ -213,9 +234,7 @@ export const initSocket = (server) => {
 
     socket.on("disconnect", () => {
       for (const [userId, socketId] of onlineUsers.entries()) {
-        if (socketId === socket.id) {
-          onlineUsers.delete(userId);
-        }
+        if (socketId === socket.id) onlineUsers.delete(userId);
       }
     });
   });

@@ -12,6 +12,7 @@ const notificationSchema = new mongoose.Schema({
   content: { type: String }, // optional text
   read: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  seen: { type: Boolean, default: false }, // new
 });
 
 export const Notification = mongoose.model("Notification", notificationSchema);
