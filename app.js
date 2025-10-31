@@ -42,8 +42,8 @@ app.use("/notifications", notificationRouter);
 app.use(express.static("public"));
 
 app.all("/{*everything}", (req, res, next) => {
+  console.log(req.path);
   next(new AppError("route not found", 404));
-  console.log("404 error");
 });
 
 app.use(handleError);

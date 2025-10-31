@@ -62,7 +62,7 @@ router.post("/credits/decrease", decreaseTheCredit);
 
 router.get("/connections", getConnections);
 
-router.delete("connections/delete-notification/:id", deleteNotification);
+router.delete("/connections/delete-notification/:id", deleteNotification);
 
 router.patch("/connections/mark-seen-or-delete/:id", markSeenOrDelete);
 
