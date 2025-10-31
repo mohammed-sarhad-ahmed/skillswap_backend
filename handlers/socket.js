@@ -232,6 +232,32 @@ export const initSocket = (server) => {
       }
     });
 
+    socket.on("join_session", ({ sessionId }) => {
+      socket.join(sessionId);
+      console.log(`${socket.id} joined session ${sessionId}`);
+      socket.to(sessionId).emit("user_joined_session", { userId: socket.id });
+    });
+
+    // ✅ WebRTC signaling
+    socket.on("offer", ({ sessionId, offer }) => {
+      socket.to(sessionId).emit("offer", { offer, sender: socket.id });
+    });
+
+    socket.on("answer", ({ sessionId, answer }) => {
+      socket.to(sessionId).emit("answer", { answer, sender: socket.id });
+    });
+
+    socket.on("ice_candidate", ({ sessionId, candidate }) => {
+      socket
+        .to(sessionId)
+        .emit("ice_candidate", { candidate, sender: socket.id });
+    });
+
+    // ✅ End session
+    socket.on("end_session", ({ sessionId }) => {
+      io.to(sessionId).emit("session_ended");
+    });
+
     socket.on("disconnect", () => {
       for (const [userId, socketId] of onlineUsers.entries()) {
         if (socketId === socket.id) onlineUsers.delete(userId);

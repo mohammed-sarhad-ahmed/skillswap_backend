@@ -7,6 +7,7 @@ import {
   updateAppointmentStatus,
   deleteAppointment,
   updateAppointmentSchedule,
+  nextAppointment,
 } from "../handlers/appointments.js";
 
 import { protectRoute } from "../handlers/auth.js";
@@ -16,10 +17,10 @@ const router = express.Router();
 router.use(protectRoute);
 router.post("/", createAppointment);
 router.get("/", getAppointments);
+router.get("/next", nextAppointment);
 router.get("/:id", getAppointment);
 router.patch("/:id", updateAppointmentStatus);
 router.patch("/change-schedule/:id", updateAppointmentSchedule);
-
 router.delete("/:id", deleteAppointment);
 
 export default router;

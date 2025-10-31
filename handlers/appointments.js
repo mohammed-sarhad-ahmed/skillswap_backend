@@ -217,3 +217,31 @@ export const deleteAppointment = async (req, res, next) => {
     next(err);
   }
 };
+
+export const nextAppointment = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next(new AppError("You are not logged in!", 401));
+    }
+
+    const now = new Date();
+
+    const appointment = await Appointment.findOne({
+      $or: [{ student: req.user._id }, { teacher: req.user._id }],
+      date: { $gte: now },
+      status: "confirmed",
+    })
+      .sort({ date: 1, time: 1 })
+      .populate("teacher")
+      .populate("student");
+
+    if (!appointment) {
+      return response(res, "No upcoming appointments found.", null);
+    }
+
+    response(res, "Next appointment fetched successfully", { appointment });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
+};
