@@ -5,7 +5,6 @@ import path from "path";
 import fs from "fs";
 import Appointment from "../models/appointments.js";
 import SkillModel from "../models/skills.js";
-import { get } from "http";
 
 export const getUserProfile = async (req, res, next) => {
   try {
@@ -357,7 +356,10 @@ export async function getConnections(req, res, next) {
   try {
     const userId = req.user._id;
 
-    const user = await UserModel.findById(userId).populate("connections");
+    const user = await UserModel.findById(userId).populate({
+      path: "connections",
+      populate: [{ path: "learningSkills" }, { path: "teachingSkills" }],
+    });
 
     if (!user) return next(new AppError("User not found", 404));
     console.log(user.connections);
