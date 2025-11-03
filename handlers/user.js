@@ -362,7 +362,6 @@ export async function getConnections(req, res, next) {
     });
 
     if (!user) return next(new AppError("User not found", 404));
-    console.log(user.connections);
     response(res, "Connections fetched successfully", {
       connections: user.connections,
     });

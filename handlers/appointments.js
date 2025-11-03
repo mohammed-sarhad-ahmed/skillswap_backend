@@ -1,4 +1,5 @@
 // controllers/appointmentController.js
+import path from "path";
 import Appointment from "../models/appointments.js";
 import { UserModel } from "../models/user.js";
 import AppError from "../utils/app_error.js";
@@ -23,6 +24,19 @@ export const createAppointment = async (req, res, next) => {
       time,
       status: { $ne: "canceled" },
     });
+
+    const studentHavedAppointment = await Appointment.findOne({
+      student,
+      date,
+      time,
+      status: { $ne: "canceled" },
+    });
+
+    if (studentHavedAppointment) {
+      return next(
+        new AppError("You already have an appointment at this time.", 400)
+      );
+    }
 
     if (existing) {
       return next(new AppError("This time slot is already booked.", 400));
@@ -81,8 +95,14 @@ export const getAppointments = async (req, res, next) => {
     if (student) filter.student = student;
 
     const appointments = await Appointment.find(filter)
-      .populate("teacher")
-      .populate("student")
+      .populate({
+        path: "teacher",
+        populate: "teachingSkills learningSkills",
+      })
+      .populate({
+        path: "student",
+        populate: "teachingSkills learningSkills",
+      })
       .sort({ date: 1, time: 1 });
 
     response(res, "Appointments fetched successfully", appointments);
@@ -226,20 +246,34 @@ export const nextAppointment = async (req, res, next) => {
 
     const now = new Date();
 
-    const appointment = await Appointment.findOne({
+    // grab all confirmed sessions from today onward
+    const appointments = await Appointment.find({
       $or: [{ student: req.user._id }, { teacher: req.user._id }],
-      date: { $gte: now },
       status: "confirmed",
     })
       .sort({ date: 1, time: 1 })
       .populate("teacher")
       .populate("student");
 
-    if (!appointment) {
+    if (!appointments.length) {
       return response(res, "No upcoming appointments found.", null);
     }
 
-    response(res, "Next appointment fetched successfully", { appointment });
+    // find the first one whose date+time is still in the future
+    const upcoming = appointments.find((appt) => {
+      const date = new Date(appt.date);
+      const [hours, minutes] = appt.time.split(":").map(Number);
+      date.setHours(hours, minutes, 0, 0);
+      return date >= now;
+    });
+
+    if (!upcoming) {
+      return response(res, "No upcoming appointments found.", null);
+    }
+
+    response(res, "Next appointment fetched successfully", {
+      appointment: upcoming,
+    });
   } catch (err) {
     console.log(err);
     next(err);

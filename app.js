@@ -56,6 +56,6 @@ const server = http.createServer(app);
 // initialize socket
 initSocket(server);
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on http://${HOST}:${PORT}`);
 });

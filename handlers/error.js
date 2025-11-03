@@ -42,7 +42,6 @@ function sendProdError(res, err) {
       message: err.message,
     });
   } else {
-    console.error(err);
     res.status(500).send({
       status: "error",
       message: "Something went very wrong.",
