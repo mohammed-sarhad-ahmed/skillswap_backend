@@ -228,7 +228,7 @@ export const updateProfileAndPicture = async (req, res, next) => {
 export async function increaseCredit(req, res, next) {
   try {
     const user = await UserModel.findByIdAndUpdate(
-      req.user._id,
+      { _id: req.body.teacherId },
       { $inc: { credits: 1 } },
       { new: true }
     );

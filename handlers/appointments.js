@@ -140,7 +140,13 @@ export const updateAppointmentStatus = async (req, res, next) => {
     }
 
     const { status } = req.body;
-    const validStatuses = ["pending", "confirmed", "completed", "canceled"];
+    const validStatuses = [
+      "pending",
+      "confirmed",
+      "ongoing",
+      "completed",
+      "canceled",
+    ];
     if (!validStatuses.includes(status)) {
       return next(new AppError("Invalid status.", 400));
     }
@@ -178,7 +184,13 @@ export const updateAppointmentSchedule = async (req, res, next) => {
     const { status, date, time, teacher } = req.body;
 
     // Validate status if provided
-    const validStatuses = ["pending", "confirmed", "completed", "canceled"];
+    const validStatuses = [
+      "pending",
+      "confirmed",
+      "ongoing",
+      "completed",
+      "canceled",
+    ];
     if (status && !validStatuses.includes(status)) {
       return next(new AppError("Invalid status.", 400));
     }
@@ -237,7 +249,6 @@ export const deleteAppointment = async (req, res, next) => {
     next(err);
   }
 };
-
 export const nextAppointment = async (req, res, next) => {
   try {
     if (!req.user) {
@@ -245,8 +256,8 @@ export const nextAppointment = async (req, res, next) => {
     }
 
     const now = new Date();
+    const nowUTC = new Date(now.toISOString());
 
-    // grab all confirmed sessions from today onward
     const appointments = await Appointment.find({
       $or: [{ student: req.user._id }, { teacher: req.user._id }],
       status: "confirmed",
@@ -259,20 +270,106 @@ export const nextAppointment = async (req, res, next) => {
       return response(res, "No upcoming appointments found.", null);
     }
 
-    // find the first one whose date+time is still in the future
+    // Find the first upcoming appointment OR any currently active appointment
     const upcoming = appointments.find((appt) => {
-      const date = new Date(appt.date);
+      // Parse the ISO date string directly - no need to split
+      const sessionStart = new Date(appt.date);
+
+      // Extract hours and minutes from the time string and add to session start
       const [hours, minutes] = appt.time.split(":").map(Number);
-      date.setHours(hours, minutes, 0, 0);
-      return date >= now;
+      sessionStart.setHours(hours, minutes, 0, 0);
+
+      const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000); // 1 hour session
+
+      // Return true if session is currently active OR in the future
+      return nowUTC >= sessionStart && nowUTC <= sessionEnd;
     });
 
-    if (!upcoming) {
+    // If no active session, find the next future session
+    const nextSession =
+      upcoming ||
+      appointments.find((appt) => {
+        const sessionStart = new Date(appt.date);
+        const [hours, minutes] = appt.time.split(":").map(Number);
+        sessionStart.setHours(hours, minutes, 0, 0);
+
+        return sessionStart > nowUTC;
+      });
+
+    if (!nextSession) {
       return response(res, "No upcoming appointments found.", null);
     }
 
     response(res, "Next appointment fetched successfully", {
-      appointment: upcoming,
+      appointment: nextSession,
+    });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
+};
+
+// New endpoint for active sessions
+export const activeAppointment = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next(new AppError("You are not logged in!", 401));
+    }
+
+    const now = new Date();
+    const nowUTC = new Date(now.toISOString());
+
+    const appointments = await Appointment.find({
+      $or: [{ student: req.user._id }, { teacher: req.user._id }],
+      status: "confirmed",
+    })
+      .populate("teacher")
+      .populate("student");
+
+    // Find any currently active appointment
+    const activeAppointment = appointments.find((appt) => {
+      // Parse the ISO date string directly
+      const sessionStart = new Date(appt.date);
+
+      // Extract hours and minutes from the time string and add to session start
+      const [hours, minutes] = appt.time.split(":").map(Number);
+      sessionStart.setHours(hours, minutes, 0, 0);
+
+      const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000);
+
+      return nowUTC >= sessionStart && nowUTC <= sessionEnd;
+    });
+
+    if (!activeAppointment) {
+      return response(res, "No active appointments found.", null);
+    }
+
+    response(res, "Active appointment fetched successfully", {
+      appointment: activeAppointment,
+    });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
+};
+
+// Add this to your backend
+export const endAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await Appointment.findByIdAndUpdate(
+      id,
+      { status: "completed" },
+      { new: true }
+    );
+
+    if (!appointment) {
+      return next(new AppError("Appointment not found", 404));
+    }
+
+    response(res, "Appointment ended successfully", {
+      appointment,
     });
   } catch (err) {
     console.log(err);
