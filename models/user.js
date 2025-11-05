@@ -93,6 +93,14 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 3,
     },
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    ratingCount: {
+      type: Number,
+      default: 0,
+    },
     connections: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     sentRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     receivedRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

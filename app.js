@@ -12,6 +12,7 @@ import AppError from "./utils/app_error.js";
 import { initSocket } from "./handlers/socket.js"; // import socket module
 import messageRouter from "./routers/messages.js";
 import notificationRouter from "./routers/notification.js";
+import ratingRoutes from "./routers/ratings.js";
 
 dotenv.config();
 
@@ -38,6 +39,12 @@ app.use("/user", userRouter);
 app.use("/messages", messageRouter);
 app.use("/appointments", appointmentsRouter);
 app.use("/notifications", notificationRouter);
+app.use("/ratings", ratingRoutes);
+
+// Add this to your backend routes
+app.get("/server-time", (req, res) => {
+  res.json({ serverTime: new Date().toISOString() });
+});
 
 app.use(express.static("public"));
 
@@ -56,6 +63,6 @@ const server = http.createServer(app);
 // initialize socket
 initSocket(server);
 
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, () => {
   console.log(`Server is running on http://${HOST}:${PORT}`);
 });
