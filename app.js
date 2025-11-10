@@ -13,6 +13,7 @@ import { initSocket } from "./handlers/socket.js"; // import socket module
 import messageRouter from "./routers/messages.js";
 import notificationRouter from "./routers/notification.js";
 import ratingRoutes from "./routers/ratings.js";
+import courseRouter from "./routers/course.js";
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use("/messages", messageRouter);
 app.use("/appointments", appointmentsRouter);
 app.use("/notifications", notificationRouter);
 app.use("/ratings", ratingRoutes);
+app.use("/courses", courseRouter);
 
 // Add this to your backend routes
 app.get("/server-time", (req, res) => {

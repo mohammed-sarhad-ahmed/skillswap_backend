@@ -27,6 +27,18 @@ const ratingSchema = new mongoose.Schema({
     maxlength: 500,
     default: "No review provided.",
   },
+  // ADD THESE 3 NEW FIELDS:
+  reply: {
+    type: String,
+    maxlength: 500,
+  },
+  repliedAt: {
+    type: Date,
+  },
+  edited: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
