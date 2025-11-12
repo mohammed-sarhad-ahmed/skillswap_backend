@@ -437,8 +437,11 @@ export const uploadCourseFile = async (req, res, next) => {
       fileType: req.file.mimetype.split("/")[1] || "file",
       uploadDate: new Date().toISOString().split("T")[0],
       uploadedBy: userId,
-      size: `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`,
-      fileUrl: `/uploads/${req.file.filename}`,
+      size:
+        req.file.size < 1024 * 1024
+          ? `${(req.file.size / 1024).toFixed(1)} KB`
+          : `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`,
+      fileUrl: `/${req.file.filename}`,
       description: description || "",
     };
 
