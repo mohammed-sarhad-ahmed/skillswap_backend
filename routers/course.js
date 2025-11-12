@@ -14,6 +14,7 @@ import {
   getCourseStats,
   getUserAvailability,
   deleteCourseContent,
+  uncompleteCourseWeek,
 } from "../handlers/course.js";
 import { protectRoute } from "../handlers/auth.js";
 
@@ -60,6 +61,10 @@ router.patch("/:courseId/weeks/:weekNumber/:structureType", updateCourseWeek);
 router.patch(
   "/:courseId/weeks/:weekNumber/:structureType/complete",
   completeCourseWeek
+);
+router.patch(
+  "/:courseId/weeks/:weekNumber/:structureType/incomplete",
+  uncompleteCourseWeek
 );
 
 // Content management

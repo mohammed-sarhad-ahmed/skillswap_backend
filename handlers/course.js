@@ -548,26 +548,58 @@ export const completeCourseWeek = async (req, res, next) => {
       return next(new AppError("Course not found", 404));
     }
 
-    // Check if user is authorized to mark this week as completed
+    // Check if user is authorized AND determine which weekly structure they should mark
     let weeklyStructure;
+
+    // UserA (student) wants to mark UserB's weekly structure as complete
     if (
-      structureType === "userA" &&
+      structureType === "userB" &&
       course.userA.toString() === userId.toString()
     ) {
-      weeklyStructure = course.userAWeeklyStructure;
-    } else if (
-      structureType === "userB" &&
+      weeklyStructure = course.userBWeeklyStructure;
+    }
+    // UserB (teacher) wants to mark UserA's weekly structure as complete
+    else if (
+      structureType === "userA" &&
       course.userB.toString() === userId.toString()
     ) {
-      weeklyStructure = course.userBWeeklyStructure;
-    } else {
-      return next(new AppError("Not authorized", 403));
+      weeklyStructure = course.userAWeeklyStructure;
+    }
+    // User is trying to mark their own structure or not authorized
+    else {
+      console.log("❌ Authorization failed:", {
+        structureType,
+        userId,
+        courseUserA: course.userA.toString(),
+        courseUserB: course.userB.toString(),
+        userIsUserA: course.userA.toString() === userId.toString(),
+        userIsUserB: course.userB.toString() === userId.toString(),
+      });
+      return next(
+        new AppError("Not authorized to mark this week as complete", 403)
+      );
     }
 
     const weekIndex = parseInt(weekNumber) - 1;
 
+    // Debug logging
+    console.log("🔍 Complete Week Debug:", {
+      courseId,
+      weekNumber,
+      weekIndex,
+      structureType,
+      userId,
+      weeklyStructureLength: weeklyStructure?.length,
+      weeklyStructure: weeklyStructure,
+    });
+
     if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
-      return next(new AppError("Invalid week number", 400));
+      return next(
+        new AppError(
+          `Invalid week number. Course has ${weeklyStructure.length} weeks.`,
+          400
+        )
+      );
     }
 
     weeklyStructure[weekIndex].completed = true;
@@ -786,6 +818,75 @@ export const deleteCourseContent = async (req, res, next) => {
       res,
       "Content deleted successfully",
       { content: weeklyStructure[weekIndex].content },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const uncompleteCourseWeek = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber, structureType } = req.params;
+    const userId = req.user._id;
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    // Check if user is authorized AND determine which weekly structure they should unmark
+    let weeklyStructure;
+
+    // UserA (student) wants to unmark UserB's weekly structure
+    if (
+      structureType === "userB" &&
+      course.userA.toString() === userId.toString()
+    ) {
+      weeklyStructure = course.userBWeeklyStructure;
+    }
+    // UserB (teacher) wants to unmark UserA's weekly structure
+    else if (
+      structureType === "userA" &&
+      course.userB.toString() === userId.toString()
+    ) {
+      weeklyStructure = course.userAWeeklyStructure;
+    }
+    // User is not authorized
+    else {
+      return next(new AppError("Not authorized to unmark this week", 403));
+    }
+
+    const weekIndex = parseInt(weekNumber) - 1;
+
+    if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    // Unmark as completed
+    weeklyStructure[weekIndex].completed = false;
+
+    // Recalculate overall progress
+    course.updateProgress();
+
+    // If course was completed, set it back to active
+    if (course.status === "completed") {
+      course.status = "active";
+      course.completedAt = undefined;
+    }
+
+    await course.save();
+
+    response(
+      res,
+      "Week marked as incomplete",
+      {
+        week: weeklyStructure[weekIndex],
+        progress: course.progress,
+        status: course.status,
+      },
       200,
       "Success"
     );
