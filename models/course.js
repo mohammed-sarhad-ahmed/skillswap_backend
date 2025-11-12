@@ -33,47 +33,33 @@ const courseSchema = new mongoose.Schema(
       min: 1,
       max: 52,
     },
-    // Exchange type based on justWantToLearn
     exchangeType: {
       type: String,
       enum: ["mutual", "one-way"],
       required: true,
     },
-    // New field from your controller
     justWantToLearn: {
       type: Boolean,
       default: false,
     },
-    // What userA will teach userB
     userATeaching: {
       skill: {
         type: String,
         trim: true,
         default: "",
       },
-      level: {
-        type: String,
-        enum: ["Beginner", "Intermediate", "Advanced", "Expert", ""],
-        default: "",
-      },
     },
-    // What userB will teach userA
     userBTeaching: {
       skill: {
         type: String,
         required: true,
         trim: true,
       },
-      level: {
-        type: String,
-        enum: ["Beginner", "Intermediate", "Advanced", "Expert", ""],
-        default: "",
-      },
     },
-    // Weekly structure for userA's teaching
+    // Updated to match frontend structure
     userAWeeklyStructure: [
       {
-        week: {
+        weekNumber: {
           type: Number,
           required: true,
         },
@@ -86,11 +72,48 @@ const courseSchema = new mongoose.Schema(
           type: String,
           trim: true,
         },
-        materials: [
+        content: [
           {
-            name: String,
+            id: String,
+            type: {
+              type: String,
+              enum: ["document", "appointment"],
+              default: "document",
+            },
+            title: String,
+            fileType: String,
             fileUrl: String,
-            uploadedAt: {
+            uploadDate: String,
+            uploadedBy: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            size: String,
+            description: String,
+            // For appointments
+            date: String,
+            time: String,
+            duration: Number,
+            appointmentId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Appointment",
+            },
+            teacher: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            student: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            status: String,
+            participants: [
+              {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+              },
+            ],
+            createdAt: {
               type: Date,
               default: Date.now,
             },
@@ -102,10 +125,9 @@ const courseSchema = new mongoose.Schema(
         },
       },
     ],
-    // Weekly structure for userB's teaching (only for mutual exchange)
     userBWeeklyStructure: [
       {
-        week: {
+        weekNumber: {
           type: Number,
           required: true,
         },
@@ -118,11 +140,48 @@ const courseSchema = new mongoose.Schema(
           type: String,
           trim: true,
         },
-        materials: [
+        content: [
           {
-            name: String,
+            id: String,
+            type: {
+              type: String,
+              enum: ["document", "appointment"],
+              default: "document",
+            },
+            title: String,
+            fileType: String,
             fileUrl: String,
-            uploadedAt: {
+            uploadDate: String,
+            uploadedBy: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            size: String,
+            description: String,
+            // For appointments
+            date: String,
+            time: String,
+            duration: Number,
+            appointmentId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Appointment",
+            },
+            teacher: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            student: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            status: String,
+            participants: [
+              {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+              },
+            ],
+            createdAt: {
               type: Date,
               default: Date.now,
             },
@@ -135,19 +194,13 @@ const courseSchema = new mongoose.Schema(
       },
     ],
     progress: {
-      userAProgress: {
+      userA: {
         type: Number,
         default: 0,
         min: 0,
         max: 100,
       },
-      userBProgress: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
-      overallProgress: {
+      userB: {
         type: Number,
         default: 0,
         min: 0,
@@ -158,6 +211,9 @@ const courseSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    startDate: {
+      type: Date,
     },
     proposedAt: {
       type: Date,
@@ -171,66 +227,74 @@ const courseSchema = new mongoose.Schema(
   }
 );
 
-// Pre-save middleware to handle exchange type logic
+// Pre-save middleware to handle exchange type logic and initialize weekly structures
 courseSchema.pre("save", function (next) {
-  // Set exchangeType based on justWantToLearn
   this.exchangeType = this.justWantToLearn ? "one-way" : "mutual";
 
-  // Clear userA teaching data if it's a one-way exchange
   if (this.justWantToLearn) {
     this.userATeaching.skill = "";
     this.userATeaching.level = "";
   }
 
+  // Initialize weekly structures if they don't exist
+  if (
+    this.isNew &&
+    (!this.userAWeeklyStructure || this.userAWeeklyStructure.length === 0)
+  ) {
+    this.initializeWeeklyStructures();
+  }
+
   next();
 });
 
-// Create weekly structures when course is accepted
+// Create weekly structures when course is created
 courseSchema.methods.initializeWeeklyStructures = function () {
-  // UserA's teaching structure (only if mutual exchange)
-  if (!this.justWantToLearn && this.userATeaching.skill) {
-    this.userAWeeklyStructure = [];
-    for (let i = 1; i <= this.duration; i++) {
-      this.userAWeeklyStructure.push({
-        week: i,
-        title: `Week ${i} - ${this.userATeaching.skill}`,
-        description: "",
-        materials: [],
+  // Helper function to create empty weekly structure
+  const createEmptyWeeklyStructure = (duration, skill = "") => {
+    const structure = [];
+    for (let i = 1; i <= duration; i++) {
+      structure.push({
+        weekNumber: i,
+        title: skill ? `Week ${i} - ${skill}` : `Week ${i}`,
+        description: "No content added yet",
+        content: [],
         completed: false,
       });
     }
+    return structure;
+  };
+
+  // UserA's teaching structure (only if mutual exchange)
+  if (!this.justWantToLearn && this.userATeaching.skill) {
+    this.userAWeeklyStructure = createEmptyWeeklyStructure(
+      this.duration,
+      this.userATeaching.skill
+    );
   } else if (this.justWantToLearn) {
-    // For one-way learning, userA is the learner, so they don't have teaching structure
     this.userAWeeklyStructure = [];
   }
 
-  // UserB's teaching structure (always exists since userB is teaching in both cases)
-  this.userBWeeklyStructure = [];
-  for (let i = 1; i <= this.duration; i++) {
-    this.userBWeeklyStructure.push({
-      week: i,
-      title: `Week ${i} - ${this.userBTeaching.skill}`,
-      description: "",
-      materials: [],
-      completed: false,
-    });
-  }
+  // UserB's teaching structure (always created)
+  this.userBWeeklyStructure = createEmptyWeeklyStructure(
+    this.duration,
+    this.userBTeaching.skill
+  );
 };
 
 // Calculate progress based on completed weeks
 courseSchema.methods.updateProgress = function () {
-  // UserA progress - in one-way exchange, userA is learning from userB
+  // UserA progress
   if (this.justWantToLearn) {
     // For one-way: userA progress is based on userB's teaching completion
     const userBCompletedWeeks = this.userBWeeklyStructure.filter(
       (week) => week.completed
     ).length;
-    this.progress.userAProgress = Math.round(
+    this.progress.userA = Math.round(
       (userBCompletedWeeks / this.duration) * 100
     );
-    this.progress.userBProgress = 0; // userB doesn't learn in one-way
+    this.progress.userB = 0;
   } else {
-    // For mutual exchange: both users teach and learn
+    // For mutual exchange
     const userACompletedWeeks = this.userAWeeklyStructure.filter(
       (week) => week.completed
     ).length;
@@ -238,20 +302,11 @@ courseSchema.methods.updateProgress = function () {
       (week) => week.completed
     ).length;
 
-    this.progress.userAProgress = Math.round(
+    this.progress.userA = Math.round(
       (userACompletedWeeks / this.duration) * 100
     );
-    this.progress.userBProgress = Math.round(
+    this.progress.userB = Math.round(
       (userBCompletedWeeks / this.duration) * 100
-    );
-  }
-
-  // Overall progress
-  if (this.justWantToLearn) {
-    this.progress.overallProgress = this.progress.userAProgress;
-  } else {
-    this.progress.overallProgress = Math.round(
-      (this.progress.userAProgress + this.progress.userBProgress) / 2
     );
   }
 };

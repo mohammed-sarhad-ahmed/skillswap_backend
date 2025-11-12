@@ -1,4 +1,6 @@
-import Course from "../models/Course.js";
+import Course from "../models/course.js";
+import { UserModel } from "../models/user.js";
+
 import AppError from "../utils/app_error.js";
 import response from "../utils/response.js";
 
@@ -60,7 +62,7 @@ export const proposeCourse = async (req, res, next) => {
       );
     }
 
-    // Create new course proposal
+    // Create new course proposal - weekly structures will be auto-created by pre-save hook
     const course = new Course({
       title,
       description,
@@ -79,6 +81,7 @@ export const proposeCourse = async (req, res, next) => {
       justWantToLearn,
       proposedBy: userAId,
       status: "pending",
+      // Weekly structures will be automatically created by the pre-save hook
     });
 
     await course.save();
@@ -160,10 +163,18 @@ export const acceptCourseProposal = async (req, res, next) => {
       return next(new AppError("Course proposal is not pending", 400));
     }
 
-    // Initialize weekly structures and activate course
-    course.initializeWeeklyStructures();
+    // Ensure weekly structures exist (they should already from the proposal)
+    if (
+      course.userAWeeklyStructure.length === 0 ||
+      course.userBWeeklyStructure.length === 0
+    ) {
+      course.initializeWeeklyStructures();
+    }
+
+    // Activate course
     course.status = "active";
     course.acceptedAt = new Date();
+    course.startDate = new Date();
 
     await course.save();
 
@@ -187,7 +198,6 @@ export const rejectCourseProposal = async (req, res, next) => {
   try {
     const { courseId } = req.params;
     const userId = req.user._id;
-    const { reason } = req.body;
 
     const course = await Course.findById(courseId);
 
@@ -219,7 +229,6 @@ export const rejectCourseProposal = async (req, res, next) => {
 };
 
 // Get user's courses
-// In your getMyCourses controller
 export const getMyCourses = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -253,12 +262,11 @@ export const getMyCourses = async (req, res, next) => {
 
     const total = await Course.countDocuments(query);
 
-    // Ensure consistent response format
     response(
       res,
       "Courses fetched successfully",
       {
-        courses, // This should be an array
+        courses,
         total,
         totalPages: Math.ceil(total / limit),
         currentPage: page,
@@ -278,8 +286,8 @@ export const getCourseDetails = async (req, res, next) => {
     const userId = req.user._id;
 
     const course = await Course.findById(courseId)
-      .populate("userA", "fullName avatar email")
-      .populate("userB", "fullName avatar email")
+      .populate("userA", "fullName avatar email availability")
+      .populate("userB", "fullName avatar email availability")
       .populate("proposedBy", "fullName avatar");
 
     if (!course) {
@@ -362,55 +370,161 @@ export const updateCourseWeek = async (req, res, next) => {
   }
 };
 
-// Add material to course week
-export const addCourseMaterial = async (req, res, next) => {
+// Upload file to course week (REPLACES addCourseMaterial)
+export const uploadCourseFile = async (req, res, next) => {
   try {
     const { courseId, weekNumber, structureType } = req.params;
     const userId = req.user._id;
-    const { name, fileUrl } = req.body;
+    const { title, description } = req.body;
+
+    if (!req.file) {
+      return next(new AppError("File is required", 400));
+    }
 
     const course = await Course.findById(courseId);
-
     if (!course) {
       return next(new AppError("Course not found", 404));
     }
 
-    // Check if user is authorized to add materials to this structure
+    // FIXED: More flexible authorization logic
     let weeklyStructure;
+    let isAuthorized = false;
+
     if (
       structureType === "userA" &&
       course.userA.toString() === userId.toString()
     ) {
       weeklyStructure = course.userAWeeklyStructure;
+      isAuthorized = true;
     } else if (
       structureType === "userB" &&
       course.userB.toString() === userId.toString()
     ) {
       weeklyStructure = course.userBWeeklyStructure;
-    } else {
-      return next(
-        new AppError("Not authorized to add materials to this course", 403)
-      );
+      isAuthorized = true;
+    }
+
+    // Additional check for one-way learning where teacher can upload to student's structure
+    if (!isAuthorized && course.justWantToLearn) {
+      const teacherId =
+        course.proposedBy.toString() === course.userA.toString()
+          ? course.userB.toString()
+          : course.userA.toString();
+
+      if (userId.toString() === teacherId) {
+        weeklyStructure =
+          structureType === "userA"
+            ? course.userAWeeklyStructure
+            : course.userBWeeklyStructure;
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return next(new AppError("Not authorized to upload to this course", 403));
     }
 
     const weekIndex = parseInt(weekNumber) - 1;
-
     if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
       return next(new AppError("Invalid week number", 400));
     }
 
-    weeklyStructure[weekIndex].materials.push({
-      name,
-      fileUrl,
-      uploadedAt: new Date(),
-    });
+    // Create content object matching frontend structure
+    const newContent = {
+      id: `content_${Date.now()}`,
+      type: "document",
+      title: title || req.file.originalname,
+      fileType: req.file.mimetype.split("/")[1] || "file",
+      uploadDate: new Date().toISOString().split("T")[0],
+      uploadedBy: userId,
+      size: `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`,
+      fileUrl: `/uploads/${req.file.filename}`,
+      description: description || "",
+    };
+
+    // Add to content array
+    weeklyStructure[weekIndex].content.push(newContent);
+    await course.save();
+
+    response(
+      res,
+      "File uploaded successfully",
+      { content: weeklyStructure[weekIndex].content },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Add appointment to course week
+export const addCourseAppointment = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber } = req.params;
+    const userId = req.user._id;
+    const {
+      title,
+      description,
+      date,
+      time,
+      duration,
+      appointmentId,
+      teacher,
+      student,
+    } = req.body;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    // Check if user is participant
+    if (
+      course.userA.toString() !== userId.toString() &&
+      course.userB.toString() !== userId.toString()
+    ) {
+      return next(
+        new AppError("Not authorized to add appointments to this course", 403)
+      );
+    }
+
+    const weekIndex = parseInt(weekNumber) - 1;
+    if (weekIndex < 0 || weekIndex >= course.userAWeeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    // Create appointment content
+    const appointmentContent = {
+      id: `appointment_${Date.now()}`,
+      type: "appointment",
+      title: title || "Course Meeting",
+      date: date,
+      time: time,
+      duration: duration || 60,
+      description: description || "",
+      appointmentId: appointmentId,
+      teacher: teacher,
+      student: student,
+      participants: [course.userA, course.userB],
+      status: "scheduled",
+      createdAt: new Date(),
+    };
+
+    // Add to both users' weekly structures
+    if (course.userAWeeklyStructure[weekIndex]) {
+      course.userAWeeklyStructure[weekIndex].content.push(appointmentContent);
+    }
+    if (course.userBWeeklyStructure[weekIndex]) {
+      course.userBWeeklyStructure[weekIndex].content.push(appointmentContent);
+    }
 
     await course.save();
 
     response(
       res,
-      "Material added successfully",
-      { materials: weeklyStructure[weekIndex].materials },
+      "Appointment added to course successfully",
+      { appointment: appointmentContent },
       200,
       "Success"
     );
@@ -553,21 +667,21 @@ export const getCourseStats = async (req, res, next) => {
       userBCompletedWeeks: course.justWantToLearn
         ? 0 // For one-way learning, userB doesn't have weeks to complete
         : course.userBWeeklyStructure.filter((week) => week.completed).length,
-      userATotalMaterials: course.userAWeeklyStructure.reduce(
-        (acc, week) => acc + week.materials.length,
+      userATotalContent: course.userAWeeklyStructure.reduce(
+        (acc, week) => acc + week.content.length,
         0
       ),
-      userBTotalMaterials: course.justWantToLearn
-        ? 0 // For one-way learning, userB doesn't have materials
+      userBTotalContent: course.justWantToLearn
+        ? 0 // For one-way learning, userB doesn't have content
         : course.userBWeeklyStructure.reduce(
-            (acc, week) => acc + week.materials.length,
+            (acc, week) => acc + week.content.length,
             0
           ),
       progress: course.progress,
-      startDate: course.acceptedAt,
-      estimatedEndDate: course.acceptedAt
+      startDate: course.startDate,
+      estimatedEndDate: course.startDate
         ? new Date(
-            course.acceptedAt.getTime() +
+            course.startDate.getTime() +
               course.duration * 7 * 24 * 60 * 60 * 1000
           )
         : null,
@@ -577,6 +691,98 @@ export const getCourseStats = async (req, res, next) => {
       res,
       "Course statistics fetched successfully",
       { stats },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get user availability for scheduling
+export const getUserAvailability = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    // Check if users are in a course together
+    const sharedCourse = await Course.findOne({
+      $or: [
+        { userA: currentUserId, userB: userId },
+        { userA: userId, userB: currentUserId },
+      ],
+      status: "active",
+    });
+
+    if (!sharedCourse) {
+      return next(new AppError("No active course found with this user", 404));
+    }
+
+    const user = await UserModel.findById(userId).select(
+      "availability fullName avatar"
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    response(
+      res,
+      "User availability fetched successfully",
+      { user },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Delete course content
+export const deleteCourseContent = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber, structureType, contentId } = req.params;
+    const userId = req.user._id;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    // Check authorization
+    let weeklyStructure;
+    if (
+      structureType === "userA" &&
+      course.userA.toString() === userId.toString()
+    ) {
+      weeklyStructure = course.userAWeeklyStructure;
+    } else if (
+      structureType === "userB" &&
+      course.userB.toString() === userId.toString()
+    ) {
+      weeklyStructure = course.userBWeeklyStructure;
+    } else {
+      return next(
+        new AppError("Not authorized to delete content from this course", 403)
+      );
+    }
+
+    const weekIndex = parseInt(weekNumber) - 1;
+    if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    // Remove content
+    weeklyStructure[weekIndex].content = weeklyStructure[
+      weekIndex
+    ].content.filter((item) => item.id !== contentId);
+
+    await course.save();
+
+    response(
+      res,
+      "Content deleted successfully",
+      { content: weeklyStructure[weekIndex].content },
       200,
       "Success"
     );
