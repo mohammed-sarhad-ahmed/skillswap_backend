@@ -283,30 +283,30 @@ courseSchema.methods.initializeWeeklyStructures = function () {
 
 // Calculate progress based on completed weeks
 courseSchema.methods.updateProgress = function () {
-  // UserA progress
   if (this.justWantToLearn) {
-    // For one-way: userA progress is based on userB's teaching completion
+    // For one-way: userA (student) progress is based on userB's teaching completion
     const userBCompletedWeeks = this.userBWeeklyStructure.filter(
       (week) => week.completed
     ).length;
     this.progress.userA = Math.round(
       (userBCompletedWeeks / this.duration) * 100
     );
-    this.progress.userB = 0;
+    this.progress.userB = 0; // Teacher doesn't have learning progress in one-way
   } else {
-    // For mutual exchange
-    const userACompletedWeeks = this.userAWeeklyStructure.filter(
-      (week) => week.completed
-    ).length;
-    const userBCompletedWeeks = this.userBWeeklyStructure.filter(
-      (week) => week.completed
-    ).length;
+    // For mutual exchange - FIXED LOGIC
+    // UserA's learning progress = how many of UserB's weeks they completed
+    const userACompletedWeeksInUserBStructure =
+      this.userBWeeklyStructure.filter((week) => week.completed).length;
+
+    // UserB's learning progress = how many of UserA's weeks they completed
+    const userBCompletedWeeksInUserAStructure =
+      this.userAWeeklyStructure.filter((week) => week.completed).length;
 
     this.progress.userA = Math.round(
-      (userACompletedWeeks / this.duration) * 100
+      (userACompletedWeeksInUserBStructure / this.duration) * 100
     );
     this.progress.userB = Math.round(
-      (userBCompletedWeeks / this.duration) * 100
+      (userBCompletedWeeksInUserAStructure / this.duration) * 100
     );
   }
 };
