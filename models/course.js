@@ -56,7 +56,7 @@ const courseSchema = new mongoose.Schema(
         trim: true,
       },
     },
-    // Updated to match frontend structure
+    // UPDATED: Simplified content structure
     userAWeeklyStructure: [
       {
         weekNumber: {
@@ -80,6 +80,7 @@ const courseSchema = new mongoose.Schema(
               enum: ["document", "appointment"],
               default: "document",
             },
+            // Document fields (only for type: "document")
             title: String,
             fileType: String,
             fileUrl: String,
@@ -90,29 +91,19 @@ const courseSchema = new mongoose.Schema(
             },
             size: String,
             description: String,
-            // For appointments
-            date: String,
-            time: String,
-            duration: Number,
+            // UPDATED: For appointments, ONLY store the reference
             appointmentId: {
               type: mongoose.Schema.Types.ObjectId,
               ref: "Appointment",
             },
-            teacher: {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: "User",
-            },
-            student: {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: "User",
-            },
-            status: String,
-            participants: [
-              {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
-              },
-            ],
+            // REMOVED: All duplicate appointment fields
+            // date: String,
+            // time: String,
+            // duration: Number,
+            // teacher: ObjectId,
+            // student: ObjectId,
+            // status: String,
+            // participants: [ObjectId],
             createdAt: {
               type: Date,
               default: Date.now,
@@ -148,6 +139,7 @@ const courseSchema = new mongoose.Schema(
               enum: ["document", "appointment"],
               default: "document",
             },
+            // Document fields (only for type: "document")
             title: String,
             fileType: String,
             fileUrl: String,
@@ -158,29 +150,12 @@ const courseSchema = new mongoose.Schema(
             },
             size: String,
             description: String,
-            // For appointments
-            date: String,
-            time: String,
-            duration: Number,
+            // UPDATED: For appointments, ONLY store the reference
             appointmentId: {
               type: mongoose.Schema.Types.ObjectId,
               ref: "Appointment",
             },
-            teacher: {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: "User",
-            },
-            student: {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: "User",
-            },
-            status: String,
-            participants: [
-              {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
-              },
-            ],
+            // REMOVED: All duplicate appointment fields
             createdAt: {
               type: Date,
               default: Date.now,
@@ -233,7 +208,6 @@ courseSchema.pre("save", function (next) {
 
   if (this.justWantToLearn) {
     this.userATeaching.skill = "";
-    this.userATeaching.level = "";
   }
 
   // Initialize weekly structures if they don't exist
@@ -293,7 +267,7 @@ courseSchema.methods.updateProgress = function () {
     );
     this.progress.userB = 0; // Teacher doesn't have learning progress in one-way
   } else {
-    // For mutual exchange - FIXED LOGIC
+    // For mutual exchange
     // UserA's learning progress = how many of UserB's weeks they completed
     const userACompletedWeeksInUserBStructure =
       this.userBWeeklyStructure.filter((week) => week.completed).length;

@@ -116,6 +116,15 @@ export const getCourseProposals = async (req, res, next) => {
     })
       .populate("userA", "fullName avatar teachingSkills learningSkills")
       .populate("proposedBy", "fullName avatar")
+      // ADD: Populate appointment data
+      .populate({
+        path: "userAWeeklyStructure.content.appointmentId",
+        model: "Appointment",
+      })
+      .populate({
+        path: "userBWeeklyStructure.content.appointmentId",
+        model: "Appointment",
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -141,7 +150,6 @@ export const getCourseProposals = async (req, res, next) => {
     next(err);
   }
 };
-
 // Accept a course proposal
 export const acceptCourseProposal = async (req, res, next) => {
   try {
@@ -256,6 +264,15 @@ export const getMyCourses = async (req, res, next) => {
     const courses = await Course.find(query)
       .populate("userA", "fullName avatar")
       .populate("userB", "fullName avatar")
+      // ADD: Populate appointment data
+      .populate({
+        path: "userAWeeklyStructure.content.appointmentId",
+        model: "Appointment",
+      })
+      .populate({
+        path: "userBWeeklyStructure.content.appointmentId",
+        model: "Appointment",
+      })
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -288,7 +305,24 @@ export const getCourseDetails = async (req, res, next) => {
     const course = await Course.findById(courseId)
       .populate("userA", "fullName avatar email availability")
       .populate("userB", "fullName avatar email availability")
-      .populate("proposedBy", "fullName avatar");
+      .populate("proposedBy", "fullName avatar")
+      // ADD: Populate appointment data for both weekly structures
+      .populate({
+        path: "userAWeeklyStructure.content.appointmentId",
+        model: "Appointment",
+        populate: [
+          { path: "teacher", select: "fullName avatar" },
+          { path: "student", select: "fullName avatar" },
+        ],
+      })
+      .populate({
+        path: "userBWeeklyStructure.content.appointmentId",
+        model: "Appointment",
+        populate: [
+          { path: "teacher", select: "fullName avatar" },
+          { path: "student", select: "fullName avatar" },
+        ],
+      });
 
     if (!course) {
       return next(new AppError("Course not found", 404));
@@ -461,26 +495,18 @@ export const uploadCourseFile = async (req, res, next) => {
   }
 };
 
-// Add appointment to course week
 export const addCourseAppointment = async (req, res, next) => {
   try {
     const { courseId, weekNumber } = req.params;
     const userId = req.user._id;
-    const {
-      title,
-      description,
-      date,
-      time,
-      duration,
-      appointmentId,
-      teacher,
-      student,
-    } = req.body;
+    const { appointmentId } = req.body;
 
     const course = await Course.findById(courseId);
     if (!course) {
       return next(new AppError("Course not found", 404));
     }
+
+    console.log(course);
 
     // Check if user is participant
     if (
@@ -492,34 +518,65 @@ export const addCourseAppointment = async (req, res, next) => {
       );
     }
 
+    // Determine which weekly structure to use based on exchange type and user role
+    let targetStructure;
+    let otherStructure;
+
+    if (course.exchangeType === "mutual") {
+      // In mutual exchange, both users have structures
+      targetStructure = course.userAWeeklyStructure;
+      otherStructure = course.userBWeeklyStructure;
+    } else {
+      // In one-way exchange, determine who is teacher and who is student
+      const isUserA = course.userA.toString() === userId.toString();
+      const isTeacher = course.proposedBy.toString() !== userId.toString();
+
+      if (isTeacher) {
+        // Teacher uses their own structure
+        targetStructure = isUserA
+          ? course.userAWeeklyStructure
+          : course.userBWeeklyStructure;
+        otherStructure = isUserA
+          ? course.userBWeeklyStructure
+          : course.userAWeeklyStructure;
+      } else {
+        // Student uses teacher's structure
+        targetStructure = isUserA
+          ? course.userBWeeklyStructure
+          : course.userAWeeklyStructure;
+        otherStructure = isUserA
+          ? course.userAWeeklyStructure
+          : course.userBWeeklyStructure;
+      }
+    }
+
     const weekIndex = parseInt(weekNumber) - 1;
-    if (weekIndex < 0 || weekIndex >= course.userAWeeklyStructure.length) {
+
+    // Check if target structure exists and has the requested week
+    if (
+      !targetStructure ||
+      weekIndex < 0 ||
+      weekIndex >= targetStructure.length
+    ) {
       return next(new AppError("Invalid week number", 400));
     }
 
-    // Create appointment content
+    // UPDATED: Create simplified appointment content - only store appointmentId
     const appointmentContent = {
       id: `appointment_${Date.now()}`,
       type: "appointment",
-      title: title || "Course Meeting",
-      date: date,
-      time: time,
-      duration: duration || 60,
-      description: description || "",
       appointmentId: appointmentId,
-      teacher: teacher,
-      student: student,
-      participants: [course.userA, course.userB],
-      status: "scheduled",
       createdAt: new Date(),
     };
 
-    // Add to both users' weekly structures
-    if (course.userAWeeklyStructure[weekIndex]) {
-      course.userAWeeklyStructure[weekIndex].content.push(appointmentContent);
+    // Add to target structure (the one that should have this week)
+    if (targetStructure[weekIndex]) {
+      targetStructure[weekIndex].content.push(appointmentContent);
     }
-    if (course.userBWeeklyStructure[weekIndex]) {
-      course.userBWeeklyStructure[weekIndex].content.push(appointmentContent);
+
+    // Only add to other structure if it exists and has the same week
+    if (otherStructure && otherStructure[weekIndex]) {
+      otherStructure[weekIndex].content.push(appointmentContent);
     }
 
     await course.save();

@@ -5,7 +5,7 @@ import { UserModel } from "../models/user.js";
 import AppError from "../utils/app_error.js";
 import response from "../utils/response.js";
 
-// Create a new appointment
+// In controllers/appointmentController.js - Update createAppointment function
 export const createAppointment = async (req, res, next) => {
   try {
     if (!req.user) {
@@ -14,32 +14,42 @@ export const createAppointment = async (req, res, next) => {
       );
     }
 
-    const { teacher, date, time } = req.body;
-    const student = req.user._id;
+    const { teacher, student, date, time, title, description, courseId, week } =
+      req.body;
 
-    // Prevent double booking
-    const existing = await Appointment.findOne({
+    // Validate required fields
+    if (!teacher || !student || !date || !time) {
+      return next(
+        new AppError("Teacher, student, date, and time are required", 400)
+      );
+    }
+
+    // Prevent double booking for teacher
+    const existingTeacherAppointment = await Appointment.findOne({
       teacher,
       date,
       time,
       status: { $ne: "canceled" },
     });
 
-    const studentHavedAppointment = await Appointment.findOne({
+    if (existingTeacherAppointment) {
+      return next(
+        new AppError("This time slot is already booked for the teacher.", 400)
+      );
+    }
+
+    // Prevent double booking for student
+    const existingStudentAppointment = await Appointment.findOne({
       student,
       date,
       time,
       status: { $ne: "canceled" },
     });
 
-    if (studentHavedAppointment) {
+    if (existingStudentAppointment) {
       return next(
         new AppError("You already have an appointment at this time.", 400)
       );
-    }
-
-    if (existing) {
-      return next(new AppError("This time slot is already booked.", 400));
     }
 
     // Check student credits
@@ -67,13 +77,17 @@ export const createAppointment = async (req, res, next) => {
       student,
       date,
       time,
+      title: title || "Course Session",
+      description: description || "",
+      courseId: courseId || null,
+      week: week || null,
       status: "pending",
     });
 
     response(
       res,
       "Appointment created successfully. 1 credit deducted from student.",
-      appointment,
+      { appointment },
       201,
       "Success"
     );
