@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const { Schema, model } = mongoose;
 
@@ -30,6 +31,11 @@ const AppointmentSchema = new Schema(
     },
     time: {
       type: String,
+      required: true,
+    },
+    proposedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
     status: {

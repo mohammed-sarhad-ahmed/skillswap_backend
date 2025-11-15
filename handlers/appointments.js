@@ -82,6 +82,7 @@ export const createAppointment = async (req, res, next) => {
       courseId: courseId || null,
       week: week || null,
       status: "pending",
+      proposedBy: req.user._id,
     });
 
     response(
