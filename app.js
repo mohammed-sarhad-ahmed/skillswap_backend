@@ -14,6 +14,8 @@ import messageRouter from "./routers/messages.js";
 import notificationRouter from "./routers/notification.js";
 import ratingRoutes from "./routers/ratings.js";
 import courseRouter from "./routers/course.js";
+import adminRouter from "./routers/admin.js";
+import reportRouter from "./routers/report.js";
 
 dotenv.config();
 
@@ -42,6 +44,8 @@ app.use("/appointments", appointmentsRouter);
 app.use("/notifications", notificationRouter);
 app.use("/ratings", ratingRoutes);
 app.use("/courses", courseRouter);
+app.use("/admin", adminRouter);
+app.use("/report", reportRouter);
 
 // Add this to your backend routes
 app.get("/server-time", (req, res) => {

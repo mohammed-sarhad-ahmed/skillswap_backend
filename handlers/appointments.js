@@ -100,10 +100,6 @@ export const createAppointment = async (req, res, next) => {
 // Get appointments
 export const getAppointments = async (req, res, next) => {
   try {
-    if (!req.user) {
-      return next(new AppError("You are not logged in!", 401));
-    }
-
     const { teacher, student } = req.query;
     const filter = {};
     if (teacher) filter.teacher = teacher;
@@ -129,10 +125,6 @@ export const getAppointments = async (req, res, next) => {
 // Get a single appointment
 export const getAppointment = async (req, res, next) => {
   try {
-    if (!req.user) {
-      return next(new AppError("You are not logged in!", 401));
-    }
-
     const appointment = await Appointment.findById(req.params.id)
       .populate("teacher")
       .populate("student");

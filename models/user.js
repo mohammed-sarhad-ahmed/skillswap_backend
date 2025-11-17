@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import SkillSchema from "./skills.js";
+import { type } from "os";
 
 const availabilitySchema = new mongoose.Schema({
   Monday: {
@@ -100,6 +101,10 @@ const userSchema = new mongoose.Schema(
     ratingCount: {
       type: Number,
       default: 0,
+    },
+    banned: {
+      default: false,
+      type: Boolean,
     },
     connections: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     sentRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

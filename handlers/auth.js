@@ -71,6 +71,13 @@ export const login = async (req, res, next) => {
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError("Incorrect email or password", 401));
   }
+  if (user.banned) {
+    return next(
+      new AppError(
+        "The user belong to this is banned contact us if you think we are wrong"
+      )
+    );
+  }
   const token = await signTokenAsync({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXP,
   });
@@ -157,7 +164,13 @@ export async function protectRoute(req, res, next) {
       )
     );
   }
-
+  if (currentUser.banned) {
+    return next(
+      new AppError(
+        "The user belong to this is banned contact us if you think we are wrong"
+      )
+    );
+  }
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
       new AppError("User recently changed password! Please log in again.", 401)

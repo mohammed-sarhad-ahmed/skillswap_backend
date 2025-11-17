@@ -492,3 +492,8 @@ export const updateReply = async (req, res, next) => {
     next(err);
   }
 };
+
+export async function getAllRatings(req, res, next) {
+  const ratings = await Rating.find();
+  response(res, "Reply updated successfully", ratings, 200, "Success");
+}
