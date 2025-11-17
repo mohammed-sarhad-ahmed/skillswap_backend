@@ -7,6 +7,7 @@ import {
 } from "../handlers/admin.js";
 import { getAppointments } from "../handlers/appointments.js";
 import { getAllRatings } from "../handlers/ratings.js";
+import { getAllCourse } from "../handlers/course.js";
 
 const router = express.Router();
 
@@ -15,5 +16,6 @@ router.post("/signup", createAdminOnce);
 router.post("/me", protectAdmin, adminMe);
 router.get("/appointment", protectAdmin, getAppointments);
 router.get("/rating", protectAdmin, getAllRatings);
+router.get("/courses", protectAdmin, getAllCourse);
 
 export default router;

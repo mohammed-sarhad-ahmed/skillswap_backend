@@ -951,3 +951,8 @@ export const uncompleteCourseWeek = async (req, res, next) => {
     next(err);
   }
 };
+
+export async function getAllCourse(req, res, next) {
+  const courses = await Course.find();
+  response(res, "Week marked as incomplete", courses, 200, "Success");
+}

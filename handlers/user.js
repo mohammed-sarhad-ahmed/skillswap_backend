@@ -369,3 +369,8 @@ export async function getConnections(req, res, next) {
     next(err);
   }
 }
+
+export async function getAllUsers(req, res, next) {
+  const users = await UserModel.find();
+  response(res, "Week marked as incomplete", users, 200, "Success");
+}
