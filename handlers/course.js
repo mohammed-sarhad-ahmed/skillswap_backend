@@ -953,6 +953,6 @@ export const uncompleteCourseWeek = async (req, res, next) => {
 };
 
 export async function getAllCourse(req, res, next) {
-  const courses = await Course.find();
+  const courses = await Course.find().populate("userA").populate("userB");
   response(res, "Week marked as incomplete", courses, 200, "Success");
 }

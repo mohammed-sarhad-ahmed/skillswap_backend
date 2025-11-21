@@ -494,6 +494,6 @@ export const updateReply = async (req, res, next) => {
 };
 
 export async function getAllRatings(req, res, next) {
-  const ratings = await Rating.find();
+  const ratings = await Rating.find().populate("teacher").populate("student");
   response(res, "Reply updated successfully", ratings, 200, "Success");
 }

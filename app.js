@@ -16,6 +16,7 @@ import ratingRoutes from "./routers/ratings.js";
 import courseRouter from "./routers/course.js";
 import adminRouter from "./routers/admin.js";
 import reportRouter from "./routers/report.js";
+import defenseRouter from "./routers/defense.js";
 
 dotenv.config();
 
@@ -46,8 +47,8 @@ app.use("/ratings", ratingRoutes);
 app.use("/courses", courseRouter);
 app.use("/admin", adminRouter);
 app.use("/report", reportRouter);
+app.use("/defense", defenseRouter);
 
-// Add this to your backend routes
 app.get("/server-time", (req, res) => {
   res.json({ serverTime: new Date().toISOString() });
 });
