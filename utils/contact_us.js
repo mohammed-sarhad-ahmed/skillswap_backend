@@ -11,20 +11,20 @@ class ContactUsEmail extends Email {
   async sendEmail() {
     const html = await renderEmail(this.emailTemplatePath, {
       name: this.name,
-      email: this.to,
+      email: this.to, // user email
       message: this.message,
     });
 
     const mailOptions = {
-      from: this.userEmail,
-      to: process.env.EMAIL_FROM,
-      subject: this.subject,
+      from: `📩 Contact Form <${process.env.EMAIL_FROM}>`,
+      to: process.env.CONTACT_ADMIN_EMAIL,
+      replyTo: this.to,
+      subject: `Message from ${this.name} (${this.to}) — ${this.subject}`,
       html,
     };
 
     const info = await this.transporter.sendMail(mailOptions);
-    console.log("Admin Contact Alert Sent ✔");
-    console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
+    console.log("Contact email forwarded to staff ✔");
   }
 }
 
