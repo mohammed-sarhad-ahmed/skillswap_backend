@@ -5,6 +5,7 @@ import {
   submitDefense,
   getDefenseForReport,
   getDefenseForAdmin,
+  getDefense,
 } from "../handlers/defense.js";
 import { protectRoute } from "../handlers/auth.js";
 import { protectAdmin } from "../handlers/admin.js";
@@ -42,6 +43,8 @@ router.post(
   submitDefense
 );
 router.get("/report/:reportId", protectRoute, getDefenseForReport);
+
+router.get("/:reportId", protectRoute, getDefense);
 
 // Admin routes
 router.get("/admin/:reportId", protectAdmin, getDefenseForAdmin);

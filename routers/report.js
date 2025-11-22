@@ -7,6 +7,7 @@ import {
   getReport,
   acceptReport,
   rejectReport,
+  getMyReports,
 } from "../handlers/reports.js";
 import { protectAdmin } from "../handlers/admin.js";
 import { protectRoute } from "../handlers/auth.js";
@@ -49,5 +50,7 @@ router.get("/admin", protectAdmin, getReports);
 router.get("/admin/:id", protectAdmin, getReport);
 router.patch("/admin/:id/accept", protectAdmin, acceptReport);
 router.patch("/admin/:id/reject", protectAdmin, rejectReport);
+// In your routes file
+router.get("/my-reports", protectRoute, getMyReports);
 
 export default router;

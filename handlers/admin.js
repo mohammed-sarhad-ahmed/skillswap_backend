@@ -4,6 +4,8 @@ import AppError from "../utils/app_error.js";
 import response from "../utils/response.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import ContactUsEmail from "../utils/contact_us.js";
+
 // ===========================
 // Helper: Sign JWT
 // ===========================
@@ -138,5 +140,43 @@ export const adminMe = async (req, res, next) => {
     );
   } catch (err) {
     next(err);
+  }
+};
+
+export const contactUs = async (req, res, next) => {
+  try {
+    const { name, email, message } = req.body;
+
+    // Validate fields
+    if (!name || !email || !message) {
+      return next(new AppError("Please fill all fields", 400));
+    }
+
+    // Send admin notification email
+    const mail = new ContactUsEmail(
+      "contact",
+      name,
+      email,
+      "New Contact Form Submission",
+      message
+    );
+
+    await mail.sendEmail();
+
+    // Unified success response
+    return response(
+      res,
+      "Contact form submitted successfully",
+      { name, email },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    console.error("Contact Us Email Error:", err);
+
+    // Pass error to global handler
+    return next(
+      new AppError("Failed to deliver message — the squad is on it 💻⚙️", 500)
+    );
   }
 };

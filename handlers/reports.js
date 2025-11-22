@@ -131,3 +131,23 @@ export const rejectReport = async (req, res, next) => {
     next(err);
   }
 };
+
+// ===========================
+// Get Reports for Current User (User's own reports)
+// ===========================
+export const getMyReports = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next(new AppError("You must be logged in.", 401));
+    }
+
+    const reports = await Report.find({ reportedUser: req.user._id })
+      .populate("reportedBy", "fullName email")
+      .populate("reportedUser", "fullName email banned")
+      .sort({ createdAt: -1 });
+
+    response(res, "Your reports fetched successfully", reports);
+  } catch (err) {
+    next(err);
+  }
+};

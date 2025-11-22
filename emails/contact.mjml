@@ -1,0 +1,84 @@
+<mjml>
+  <mj-head>
+    <mj-title>New Contact Request</mj-title>
+    <mj-preview>Someone just hit up the contact form</mj-preview>
+  </mj-head>
+
+  <mj-body background-color="#f5f5f5">
+    <!-- Spacer -->
+    <mj-section padding="15px 0">
+      <mj-column>
+        <mj-text>&nbsp;</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Card -->
+    <mj-section background-color="#ffffff" padding="25px">
+      <mj-column>
+        <mj-text
+          font-size="20px"
+          color="#111"
+          align="center"
+          font-family="Arial, sans-serif"
+          padding="0 0 10px 0"
+        >
+          🚨 New Contact Message
+        </mj-text>
+
+        <mj-text
+          font-size="15px"
+          color="#333"
+          font-family="Arial, sans-serif"
+          padding="10px 0"
+        >
+          Yo team, someone just reached out through the website 👇
+        </mj-text>
+
+        <mj-table font-size="14px" color="#444" font-family="Arial, sans-serif">
+          <tr>
+            <td style="padding: 4px 0"><strong>Name:</strong></td>
+            <td style="padding: 4px 0">{{name}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0"><strong>Email:</strong></td>
+            <td style="padding: 4px 0">{{email}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; vertical-align: top">
+              <strong>Message:</strong>
+            </td>
+            <td style="padding: 4px 0">{{message}}</td>
+          </tr>
+        </mj-table>
+
+        <mj-text
+          font-size="13px"
+          color="#777"
+          font-family="Arial, sans-serif"
+          padding="20px 0 0 0"
+        >
+          Handle it when you can — don’t let the homie wait too long 😌
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Spacer -->
+    <mj-section padding="10px 0">
+      <mj-column><mj-text>&nbsp;</mj-text></mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section>
+      <mj-column>
+        <mj-text
+          align="center"
+          font-size="12px"
+          color="#888"
+          font-family="Arial, sans-serif"
+        >
+          © 2025 SkillSwap Internal Notification
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

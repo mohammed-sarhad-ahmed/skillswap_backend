@@ -138,3 +138,43 @@ export const getDefenseForAdmin = async (req, res, next) => {
     next(err);
   }
 };
+
+export async function getDefense(req, res, next) {
+  try {
+    const { reportId } = req.params;
+
+    if (!reportId) {
+      return next(new AppError("Report ID is required.", 400));
+    }
+
+    const defense = await DefenseModel.findOne({ reportId })
+      .populate("reportedUserId", "fullName email")
+      .populate("reportId", "title reason status reportedBy reportedUser");
+
+    if (!defense) {
+      return next(new AppError("Defense not found for this report.", 404));
+    }
+
+    // Authorization check
+    const report = await Report.findById(reportId);
+    if (!report) {
+      return next(new AppError("Report not found.", 404));
+    }
+
+    // Allow access for:
+    // 1. Admins
+    // 2. User who submitted the defense
+    // 3. User who was reported (the reportedUser)
+    if (
+      !req.admin &&
+      defense.reportedUserId._id.toString() !== req.user?._id?.toString() &&
+      report.reportedUser.toString() !== req.user?._id?.toString()
+    ) {
+      return next(new AppError("Not authorized to view this defense.", 403));
+    }
+
+    response(res, "Defense fetched successfully", defense);
+  } catch (err) {
+    next(err);
+  }
+}
