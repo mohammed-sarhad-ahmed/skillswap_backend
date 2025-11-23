@@ -56,7 +56,6 @@ const courseSchema = new mongoose.Schema(
         trim: true,
       },
     },
-    // UPDATED: Simplified content structure
     userAWeeklyStructure: [
       {
         weekNumber: {
@@ -77,10 +76,10 @@ const courseSchema = new mongoose.Schema(
             id: String,
             type: {
               type: String,
-              enum: ["document", "appointment"],
+              enum: ["document", "appointment", "assignment"],
               default: "document",
             },
-            // Document fields (only for type: "document")
+            // Document fields
             title: String,
             fileType: String,
             fileUrl: String,
@@ -91,19 +90,61 @@ const courseSchema = new mongoose.Schema(
             },
             size: String,
             description: String,
-            // UPDATED: For appointments, ONLY store the reference
+            // Appointment fields
             appointmentId: {
               type: mongoose.Schema.Types.ObjectId,
               ref: "Appointment",
             },
-            // REMOVED: All duplicate appointment fields
-            // date: String,
-            // time: String,
-            // duration: Number,
-            // teacher: ObjectId,
-            // student: ObjectId,
-            // status: String,
-            // participants: [ObjectId],
+            // Assignment fields - FIXED: Make assignment optional and remove required validation
+            assignment: {
+              title: { type: String, trim: true },
+              description: { type: String, trim: true },
+              dueDate: Date,
+              maxPoints: { type: Number, default: 100 },
+              instructions: String,
+              attachments: [
+                {
+                  fileName: String,
+                  fileUrl: String,
+                  fileType: String,
+                  uploadedAt: { type: Date, default: Date.now },
+                },
+              ],
+              submissions: [
+                {
+                  studentId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                  },
+                  submittedAt: { type: Date, default: Date.now },
+                  files: [
+                    {
+                      fileName: String,
+                      fileUrl: String,
+                      fileType: String,
+                      size: String,
+                    },
+                  ],
+                  grade: {
+                    points: Number,
+                    maxPoints: Number,
+                    feedback: String,
+                    gradedAt: Date,
+                    gradedBy: {
+                      type: mongoose.Schema.Types.ObjectId,
+                      ref: "User",
+                    },
+                  },
+                  status: {
+                    type: String,
+                    enum: ["submitted", "graded", "late"],
+                    default: "submitted",
+                  },
+                },
+              ],
+              createdAt: { type: Date, default: Date.now },
+              createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            },
             createdAt: {
               type: Date,
               default: Date.now,
@@ -136,10 +177,10 @@ const courseSchema = new mongoose.Schema(
             id: String,
             type: {
               type: String,
-              enum: ["document", "appointment"],
+              enum: ["document", "appointment", "assignment"],
               default: "document",
             },
-            // Document fields (only for type: "document")
+            // Document fields
             title: String,
             fileType: String,
             fileUrl: String,
@@ -150,12 +191,61 @@ const courseSchema = new mongoose.Schema(
             },
             size: String,
             description: String,
-            // UPDATED: For appointments, ONLY store the reference
+            // Appointment fields
             appointmentId: {
               type: mongoose.Schema.Types.ObjectId,
               ref: "Appointment",
             },
-            // REMOVED: All duplicate appointment fields
+            // Assignment fields - FIXED: Make assignment optional and remove required validation
+            assignment: {
+              title: { type: String, trim: true },
+              description: { type: String, trim: true },
+              dueDate: Date,
+              maxPoints: { type: Number, default: 100 },
+              instructions: String,
+              attachments: [
+                {
+                  fileName: String,
+                  fileUrl: String,
+                  fileType: String,
+                  uploadedAt: { type: Date, default: Date.now },
+                },
+              ],
+              submissions: [
+                {
+                  studentId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                  },
+                  submittedAt: { type: Date, default: Date.now },
+                  files: [
+                    {
+                      fileName: String,
+                      fileUrl: String,
+                      fileType: String,
+                      size: String,
+                    },
+                  ],
+                  grade: {
+                    points: Number,
+                    maxPoints: Number,
+                    feedback: String,
+                    gradedAt: Date,
+                    gradedBy: {
+                      type: mongoose.Schema.Types.ObjectId,
+                      ref: "User",
+                    },
+                  },
+                  status: {
+                    type: String,
+                    enum: ["submitted", "graded", "late"],
+                    default: "submitted",
+                  },
+                },
+              ],
+              createdAt: { type: Date, default: Date.now },
+              createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            },
             createdAt: {
               type: Date,
               default: Date.now,

@@ -15,20 +15,22 @@ import {
   getUserAvailability,
   deleteCourseContent,
   uncompleteCourseWeek,
+  createAssignment,
+  addAssignmentAttachment,
+  submitAssignment,
+  gradeAssignment,
+  deleteAssignment,
 } from "../handlers/course.js";
 import { protectRoute } from "../handlers/auth.js";
-
-// In routers/course.js
 import multer from "multer";
 
-// Configure multer for file uploads - FIXED to use public directory
+// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "public/"); // Changed from "uploads/" to "public/"
+    cb(null, "public/");
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    // Keep original filename but ensure uniqueness
     cb(null, "course-files-" + uniqueSuffix + "-" + file.originalname);
   },
 });
@@ -77,6 +79,27 @@ router.post("/:courseId/weeks/:weekNumber/appointments", addCourseAppointment);
 router.delete(
   "/:courseId/weeks/:weekNumber/:structureType/content/:contentId",
   deleteCourseContent
+);
+
+// NEW: Assignment routes (single create endpoint)
+router.post("/:courseId/assignments", createAssignment);
+router.post(
+  "/:courseId/weeks/:weekNumber/:structureType/assignments/:contentId/attachments",
+  upload.single("file"),
+  addAssignmentAttachment
+);
+router.post(
+  "/:courseId/weeks/:weekNumber/:structureType/assignments/:contentId/submit",
+  upload.array("files", 5), // Allow up to 5 files
+  submitAssignment
+);
+router.patch(
+  "/:courseId/weeks/:weekNumber/:structureType/assignments/:contentId/grade/:studentId",
+  gradeAssignment
+);
+router.delete(
+  "/:courseId/weeks/:weekNumber/:structureType/assignments/:contentId",
+  deleteAssignment
 );
 
 // User availability for scheduling

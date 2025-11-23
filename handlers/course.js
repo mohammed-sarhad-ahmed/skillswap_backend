@@ -956,3 +956,468 @@ export async function getAllCourse(req, res, next) {
   const courses = await Course.find().populate("userA").populate("userB");
   response(res, "Week marked as incomplete", courses, 200, "Success");
 }
+// Create assignment with automatic week assignment
+export const createAssignment = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user._id;
+    const {
+      title,
+      description,
+      instructions,
+      dueDate,
+      maxPoints = 100,
+    } = req.body;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    // Check if user is authorized to create assignment (must be teacher)
+    let isAuthorized = false;
+    let structureType;
+
+    if (course.exchangeType === "mutual") {
+      // In mutual exchange, user can create assignments in their teaching structure
+      if (course.userA.toString() === userId.toString()) {
+        structureType = "userA";
+        isAuthorized = true;
+      } else if (course.userB.toString() === userId.toString()) {
+        structureType = "userB";
+        isAuthorized = true;
+      }
+    } else {
+      // In one-way exchange, only teacher can create assignments
+      const teacherId =
+        course.proposedBy.toString() === course.userA.toString()
+          ? course.userB.toString()
+          : course.userA.toString();
+
+      if (userId.toString() === teacherId) {
+        structureType =
+          teacherId === course.userA.toString() ? "userA" : "userB";
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return next(new AppError("Not authorized to create assignments", 403));
+    }
+
+    // Calculate which week the assignment belongs to based on due date
+    let targetWeek = 1;
+    if (dueDate) {
+      const assignmentDate = new Date(dueDate);
+      const startDate = course.startDate
+        ? new Date(course.startDate)
+        : new Date();
+
+      // Calculate difference in days
+      const diffTime = assignmentDate - startDate;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Calculate week number (1-based)
+      targetWeek = Math.max(
+        1,
+        Math.min(Math.ceil(diffDays / 7), course.duration)
+      );
+    }
+
+    // Get the weekly structure
+    const weeklyStructure =
+      structureType === "userA"
+        ? course.userAWeeklyStructure
+        : course.userBWeeklyStructure;
+
+    // Find the target week or create it if it doesn't exist
+    let targetWeekIndex = targetWeek - 1;
+
+    // Ensure the weekly structure has enough weeks
+    while (weeklyStructure.length < targetWeek) {
+      weeklyStructure.push({
+        weekNumber: weeklyStructure.length + 1,
+        title: `Week ${weeklyStructure.length + 1}`,
+        description: "No content added yet",
+        content: [],
+        completed: false,
+      });
+    }
+
+    // Create assignment content - FIXED: Proper structure
+    const assignmentContent = {
+      id: `assignment_${Date.now()}`,
+      type: "assignment",
+      title: title, // This is the main title field
+      assignment: {
+        title: title,
+        description: description,
+        instructions: instructions,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        maxPoints: maxPoints,
+        attachments: [],
+        submissions: [],
+        createdAt: new Date(),
+        createdBy: userId,
+      },
+      createdAt: new Date(),
+    };
+
+    // Add to the target week
+    weeklyStructure[targetWeekIndex].content.push(assignmentContent);
+    await course.save();
+
+    response(
+      res,
+      "Assignment created successfully",
+      {
+        assignment: assignmentContent,
+        week: targetWeek,
+      },
+      201,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Add attachment to assignment
+export const addAssignmentAttachment = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber, structureType, contentId } = req.params;
+    const userId = req.user._id;
+
+    if (!req.file) {
+      return next(new AppError("File is required", 400));
+    }
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    const weeklyStructure =
+      structureType === "userA"
+        ? course.userAWeeklyStructure
+        : course.userBWeeklyStructure;
+
+    const weekIndex = parseInt(weekNumber) - 1;
+    if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    const contentItem = weeklyStructure[weekIndex].content.find(
+      (item) => item.id === contentId && item.type === "assignment"
+    );
+
+    if (!contentItem) {
+      return next(new AppError("Assignment not found", 404));
+    }
+
+    // Check authorization (same as create assignment)
+    let isAuthorized = false;
+    if (course.exchangeType === "mutual") {
+      if (
+        (structureType === "userA" &&
+          course.userA.toString() === userId.toString()) ||
+        (structureType === "userB" &&
+          course.userB.toString() === userId.toString())
+      ) {
+        isAuthorized = true;
+      }
+    } else {
+      const teacherId =
+        course.proposedBy.toString() === course.userA.toString()
+          ? course.userB.toString()
+          : course.userA.toString();
+      if (userId.toString() === teacherId) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return next(
+        new AppError("Not authorized to modify this assignment", 403)
+      );
+    }
+
+    // Add attachment
+    const attachment = {
+      fileName: req.file.originalname,
+      fileUrl: `/${req.file.filename}`,
+      fileType: req.file.mimetype.split("/")[1] || "file",
+      uploadedAt: new Date(),
+    };
+
+    contentItem.assignment.attachments.push(attachment);
+    await course.save();
+
+    response(
+      res,
+      "Attachment added successfully",
+      { attachment },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Submit assignment (files only)
+export const submitAssignment = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber, structureType, contentId } = req.params;
+    const userId = req.user._id;
+
+    if (!req.files || req.files.length === 0) {
+      return next(new AppError("At least one file is required", 400));
+    }
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    const weeklyStructure =
+      structureType === "userA"
+        ? course.userAWeeklyStructure
+        : course.userBWeeklyStructure;
+
+    const weekIndex = parseInt(weekNumber) - 1;
+    if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    const contentItem = weeklyStructure[weekIndex].content.find(
+      (item) => item.id === contentId && item.type === "assignment"
+    );
+
+    if (!contentItem) {
+      return next(new AppError("Assignment not found", 404));
+    }
+
+    // Check if user is student
+    let isStudent = false;
+    if (course.exchangeType === "mutual") {
+      // In mutual exchange, student is the one viewing the learning tab
+      if (
+        (structureType === "userA" &&
+          course.userB.toString() === userId.toString()) ||
+        (structureType === "userB" &&
+          course.userA.toString() === userId.toString())
+      ) {
+        isStudent = true;
+      }
+    } else {
+      // In one-way exchange, student is the one who proposed
+      if (userId.toString() === course.proposedBy.toString()) {
+        isStudent = true;
+      }
+    }
+
+    if (!isStudent) {
+      return next(new AppError("Only students can submit assignments", 403));
+    }
+
+    // Check if already submitted
+    const existingSubmission = contentItem.assignment.submissions.find(
+      (sub) => sub.studentId.toString() === userId.toString()
+    );
+
+    if (existingSubmission) {
+      return next(
+        new AppError("You have already submitted this assignment", 400)
+      );
+    }
+
+    // Create files array from uploaded files
+    const files = req.files.map((file) => ({
+      fileName: file.originalname,
+      fileUrl: `/${file.filename}`,
+      fileType: file.mimetype.split("/")[1] || "file",
+      size:
+        file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+    }));
+
+    // Create submission
+    const submission = {
+      studentId: userId,
+      submittedAt: new Date(),
+      files: files,
+      status: "submitted",
+    };
+
+    contentItem.assignment.submissions.push(submission);
+    await course.save();
+
+    response(
+      res,
+      "Assignment submitted successfully",
+      { submission },
+      201,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Grade assignment
+export const gradeAssignment = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber, structureType, contentId, studentId } =
+      req.params;
+    const userId = req.user._id;
+    const { points, feedback } = req.body;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    const weeklyStructure =
+      structureType === "userA"
+        ? course.userAWeeklyStructure
+        : course.userBWeeklyStructure;
+
+    const weekIndex = parseInt(weekNumber) - 1;
+    if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    const contentItem = weeklyStructure[weekIndex].content.find(
+      (item) => item.id === contentId && item.type === "assignment"
+    );
+
+    if (!contentItem) {
+      return next(new AppError("Assignment not found", 404));
+    }
+
+    // Check authorization (must be teacher)
+    let isAuthorized = false;
+    if (course.exchangeType === "mutual") {
+      if (
+        (structureType === "userA" &&
+          course.userA.toString() === userId.toString()) ||
+        (structureType === "userB" &&
+          course.userB.toString() === userId.toString())
+      ) {
+        isAuthorized = true;
+      }
+    } else {
+      const teacherId =
+        course.proposedBy.toString() === course.userA.toString()
+          ? course.userB.toString()
+          : course.userA.toString();
+      if (userId.toString() === teacherId) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return next(new AppError("Not authorized to grade assignments", 403));
+    }
+
+    // Find submission
+    const submission = contentItem.assignment.submissions.find(
+      (sub) => sub.studentId.toString() === studentId
+    );
+
+    if (!submission) {
+      return next(new AppError("Submission not found", 404));
+    }
+
+    // Update grade
+    submission.grade = {
+      points: parseInt(points),
+      maxPoints: contentItem.assignment.maxPoints,
+      feedback: feedback || "",
+      gradedAt: new Date(),
+      gradedBy: userId,
+    };
+    submission.status = "graded";
+
+    await course.save();
+
+    response(
+      res,
+      "Assignment graded successfully",
+      { submission },
+      200,
+      "Success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Delete assignment
+export const deleteAssignment = async (req, res, next) => {
+  try {
+    const { courseId, weekNumber, structureType, contentId } = req.params;
+    const userId = req.user._id;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return next(new AppError("Course not found", 404));
+    }
+
+    const weeklyStructure =
+      structureType === "userA"
+        ? course.userAWeeklyStructure
+        : course.userBWeeklyStructure;
+
+    const weekIndex = parseInt(weekNumber) - 1;
+    if (weekIndex < 0 || weekIndex >= weeklyStructure.length) {
+      return next(new AppError("Invalid week number", 400));
+    }
+
+    const contentItem = weeklyStructure[weekIndex].content.find(
+      (item) => item.id === contentId
+    );
+
+    if (!contentItem) {
+      return next(new AppError("Content not found", 404));
+    }
+
+    // Check authorization (same as create assignment)
+    let isAuthorized = false;
+    if (course.exchangeType === "mutual") {
+      if (
+        (structureType === "userA" &&
+          course.userA.toString() === userId.toString()) ||
+        (structureType === "userB" &&
+          course.userB.toString() === userId.toString())
+      ) {
+        isAuthorized = true;
+      }
+    } else {
+      const teacherId =
+        course.proposedBy.toString() === course.userA.toString()
+          ? course.userB.toString()
+          : course.userA.toString();
+      if (userId.toString() === teacherId) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return next(new AppError("Not authorized to delete this content", 403));
+    }
+
+    // Remove the content item
+    weeklyStructure[weekIndex].content = weeklyStructure[
+      weekIndex
+    ].content.filter((item) => item.id !== contentId);
+
+    await course.save();
+
+    response(res, "Assignment deleted successfully", {}, 200, "Success");
+  } catch (err) {
+    next(err);
+  }
+};
