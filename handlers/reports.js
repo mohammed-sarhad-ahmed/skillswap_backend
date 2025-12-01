@@ -1,35 +1,48 @@
 import Report from "../models/report.js";
 import AppError from "../utils/app_error.js";
 import response from "../utils/response.js";
-import { UserModel } from "../models/user.js"; // assuming your User model
+import { UserModel } from "../models/user.js";
+import { validateReportAI } from "../utils/gemini_validator.js";
 
 // ===========================
 // Create Report (User)
 // ===========================
 export const createReport = async (req, res, next) => {
   try {
-    if (!req.user) {
-      return next(new AppError("You must be logged in to report.", 401));
-    }
+    if (!req.user) return next(new AppError("You must be logged in.", 401));
 
     const { reportedUser, title, reason } = req.body;
+
+    if (!reportedUser || !title || !reason)
+      return next(new AppError("All fields are required.", 400));
+    if (!req.file) return next(new AppError("Proof image is required.", 400));
+
     const proof = `/reports/${req.file.filename}`;
 
-    if (!reportedUser || !title || !reason) {
-      return next(
-        new AppError("Reported user, title, and reason are required.", 400)
-      );
-    }
+    // ✅ AI validation BEFORE saving
+    const aiResult = await validateReportAI(
+      `${title} - ${reason}`,
+      req.file.path
+    );
 
+    // Save report with AI result + reason
     const report = await Report.create({
       reportedBy: req.user._id,
       reportedUser,
       title,
       reason,
       proof,
+      isValidAI: aiResult.isValid,
+      AIReason: aiResult.reason, // store AI's reason
     });
 
-    response(res, "Report submitted successfully", report, 201, "Success");
+    response(
+      res,
+      "Report submitted successfully",
+      { report, aiResult },
+      201,
+      "Success"
+    );
   } catch (err) {
     next(err);
   }

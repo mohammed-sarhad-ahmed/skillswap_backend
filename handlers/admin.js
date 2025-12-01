@@ -63,8 +63,6 @@ export const protectAdmin = async (req, res, next) => {
   try {
     let token;
 
-    console.log(req.headers);
-
     // Extract Bearer token
     if (req.headers.adminauth) {
       token = req.headers.adminauth;

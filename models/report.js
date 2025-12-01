@@ -36,6 +36,14 @@ const reportSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
+    isValidAI: {
+      type: Boolean,
+      default: null,
+    },
+    AIrejectionReason: {
+      type: String,
+      default: "",
+    },
     defenseSubmitted: {
       type: Boolean,
       default: false,
