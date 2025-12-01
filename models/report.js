@@ -40,7 +40,7 @@ const reportSchema = new mongoose.Schema(
       type: Boolean,
       default: null,
     },
-    AIrejectionReason: {
+    AIReason: {
       type: String,
       default: "",
     },
